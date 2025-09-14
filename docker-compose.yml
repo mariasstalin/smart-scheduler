@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: smart_scheduler
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      retries: 5
+    profiles: ["local", "prod"]
+
+  redis:
+    image: redis:7.0
+    ports:
+      - "6379:6379"
+    profiles: ["local", "prod"]
+
+  rabbitmq:
+    image: rabbitmq:3.11-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    profiles: ["local", "prod"]
+
+  rasa:
+    image: rasa/rasa:3.6.0-full
+    command: ["run", "--enable-api", "--cors", "*"]
+    ports:
+      - "5005:5005"
+    profiles: ["local", "prod"]
+
+  # -------------------------
+  # Spring Boot Microservices
+  # -------------------------
+  discovery:
+    build: ./discovery
+    ports:
+      - "8761:8761"
+    profiles: ["prod"]
+
+  config:
+    build: ./config
+    ports:
+      - "8888:8888"
+    depends_on:
+      - discovery
+    profiles: ["prod"]
+
+  gateway:
+    build: ./gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      - discovery
+      - config
+    profiles: ["prod"]
+
+  user:
+    build: ./user
+    ports:
+      - "8081:8081"
+    depends_on:
+      - mysql
+      - discovery
+    profiles: ["prod"]
+
+  appointment:
+    build: ./appointment
+    ports:
+      - "8082:8082"
+    depends_on:
+      - mysql
+      - rabbitmq
+      - discovery
+    profiles: ["prod"]
+
+  notification:
+    build: ./notification
+    ports:
+      - "8083:8083"
+    depends_on:
+      - mysql
+      - redis
+      - rabbitmq
+      - discovery
+    profiles: ["prod"]
+
+  audit:
+    build: ./audit
+    ports:
+      - "8084:8084"
+    depends_on:
+      - mysql
+      - discovery
+    profiles: ["prod"]
+
+  ui:
+    build: ./ui
+    ports:
+      - "3000:80"
+    depends_on:
+      - gateway
+    profiles: ["prod"]

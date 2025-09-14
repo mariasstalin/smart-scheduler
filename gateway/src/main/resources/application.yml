@@ -1,0 +1,29 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: user
+          uri: lb://user
+          predicates:
+            - Path=/users/**
+        - id: appointment
+          uri: lb://appointment
+          predicates:
+            - Path=/appointments/**
+        - id: notification
+          uri: lb://notification
+          predicates:
+            - Path=/notifications/**
+        - id: audit
+          uri: lb://audit
+          predicates:
+            - Path=/audit/**
