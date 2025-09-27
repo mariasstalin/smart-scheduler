@@ -1,6 +1,7 @@
 
 package com.smartscheduler.appointment.zoho;
 
+import com.smartscheduler.appointment.model.ZohoPayload;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
@@ -41,14 +42,14 @@ public class ZohoClient {
         return null;
     }
 
-    public Map createBooking(Map payload) {
+    public Map createBooking(ZohoPayload payload) {
         String token = fetchAccessToken();
         if (token==null) throw new IllegalStateException("Zoho access token unavailable");
         String url = "https://www.zohoapis.com/bookings/v1.0/organizations/" + orgId + "/bookings";
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(token);
         headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<Map> req = new HttpEntity<>(payload, headers);
+        HttpEntity<ZohoPayload> req = new HttpEntity<>(payload, headers);
         ResponseEntity<Map> resp = rest.postForEntity(url, req, Map.class);
         if (resp.getStatusCode().is2xxSuccessful()) {
             return resp.getBody();

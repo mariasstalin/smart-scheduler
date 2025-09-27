@@ -1,6 +1,7 @@
-version: '3.8'
-
 services:
+  # -------------------------
+  # Databases & Caches
+  # -------------------------
   mysql:
     image: mysql:8.0
     environment:
@@ -8,8 +9,10 @@ services:
       MYSQL_DATABASE: smart_scheduler
     ports:
       - "3306:3306"
+    volumes:
+      - ./db/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
       interval: 10s
       retries: 5
     profiles: ["local", "prod"]
@@ -18,6 +21,10 @@ services:
     image: redis:7.0
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 5
     profiles: ["local", "prod"]
 
   rabbitmq:
@@ -25,13 +32,61 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: password
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmqctl status || exit 1"]
+      interval: 10s
+      retries: 5
+    profiles: ["local", "prod"]
+
+  # -------------------------
+  # Rasa and NLP
+  # -------------------------
+  duckling:
+    image: rasa/duckling:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - TZ=Asia/Calcutta
+    command: ["duckling-example-exe"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
+      interval: 10s
+      retries: 5
+    profiles: ["local", "prod"]
+
+  rasa-actions:
+    build:
+      context: ./rasa/actions
+      dockerfile: Dockerfile
+    image: smart-scheduler-rasa-actions
+    ports:
+      - "5055:5055"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5055/ || exit 1"]
+      interval: 10s
+      retries: 5
     profiles: ["local", "prod"]
 
   rasa:
-    image: rasa/rasa:3.6.0-full
-    command: ["run", "--enable-api", "--cors", "*"]
+    image: rasa/rasa:3.6.21-full
+    volumes:
+      - ./rasa:/app
+    command: >
+      run --enable-api --cors '*' --model /app/models --debug --endpoints endpoints.yml
     ports:
       - "5005:5005"
+    depends_on:
+      - duckling
+      - rasa-actions
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5005/ || exit 1"]
+      interval: 10s
+      retries: 5
     profiles: ["local", "prod"]
 
   # -------------------------
@@ -39,12 +94,14 @@ services:
   # -------------------------
   discovery:
     build: ./discovery
+    image: smart-scheduler-discovery
     ports:
       - "8761:8761"
     profiles: ["prod"]
 
   config:
     build: ./config
+    image: smart-scheduler-config
     ports:
       - "8888:8888"
     depends_on:
@@ -53,6 +110,7 @@ services:
 
   gateway:
     build: ./gateway
+    image: smart-scheduler-gateway
     ports:
       - "8080:8080"
     depends_on:
@@ -62,6 +120,7 @@ services:
 
   user:
     build: ./user
+    image: smart-scheduler-user
     ports:
       - "8081:8081"
     depends_on:
@@ -71,6 +130,7 @@ services:
 
   appointment:
     build: ./appointment
+    image: smart-scheduler-appointment
     ports:
       - "8082:8082"
     depends_on:
@@ -81,6 +141,7 @@ services:
 
   notification:
     build: ./notification
+    image: smart-scheduler-notification
     ports:
       - "8083:8083"
     depends_on:
@@ -92,6 +153,7 @@ services:
 
   audit:
     build: ./audit
+    image: smart-scheduler-audit
     ports:
       - "8084:8084"
     depends_on:
@@ -101,8 +163,12 @@ services:
 
   ui:
     build: ./ui
+    image: smart-scheduler-ui
     ports:
       - "3000:80"
     depends_on:
       - gateway
     profiles: ["prod"]
+
+volumes:
+  rabbitmq-data:

@@ -1,0 +1,167 @@
+version: "3.1"
+
+nlu:
+# -------------------------
+# Greeting & Farewell
+# -------------------------
+- intent: greet
+  examples: |
+    - hi
+    - hello
+    - hey
+    - good morning
+    - good afternoon
+    - good evening
+    - hi there
+    - hello bot
+    - hey, I need help
+    - hello, can you help me book an appointment?
+
+- intent: goodbye
+  examples: |
+    - bye
+    - goodbye
+    - see you later
+    - talk to you soon
+    - thanks, bye
+    - that is all, bye
+    - have a good day
+
+# -------------------------
+# Confirmations
+# -------------------------
+- intent: affirm
+  examples: |
+    - yes
+    - sure
+    - please do
+    - go ahead
+    - confirm
+    - sounds good
+    - absolutely
+    - that's fine
+    - ok
+    - please proceed
+
+- intent: deny
+  examples: |
+    - no
+    - not now
+    - cancel that
+    - don't do it
+    - never mind
+    - I changed my mind
+    - not yet
+    - stop
+
+- intent: confirm_action
+  examples: |
+    - yes, please proceed
+    - go ahead with that
+    - confirm the action
+    - please continue
+    - do it
+    - yes confirm
+    - that is fine
+
+# -------------------------
+# Appointments
+# -------------------------
+- intent: ask_available_slots
+  examples: |
+    - what slots are available for Dr. [Smith](doctor_name)?
+    - show me available times for [General Consultation](service)
+    - are there any openings tomorrow for [physiotherapy](service)?
+    - available slots for today?
+    - when is Dr. [Lee](doctor_name) available next week?
+    - any appointments free on [2025-10-12](appointment_date)
+    - show me slots for [Dermatology](service) on [15 Oct](appointment_date)
+    - list openings for Dr. [Kumar](doctor_name)
+    - check availability for [Cardiology](service)
+    - find me any free slots tomorrow morning
+
+- intent: book_appointment
+  examples: |
+    - book an appointment with Dr. [Adams](doctor_name) for [physiotherapy](service) tomorrow at [10am](appointment_time)
+    - schedule a [consultation](service) with Dr. [Lee](doctor_name) on [12/10/2025](appointment_date)
+    - I want to book a session with Dr. [Smith](doctor_name) at [2pm](appointment_time)
+    - can you book me for [dental checkup](service) with Dr. [Patel](doctor_name) next Monday morning?
+    - please schedule a [general consultation](service) for [Alice Johnson](patient_name) on [2025-10-05](appointment_date) at [09:30 AM](appointment_time)
+    - book appointment for [John Doe](patient_name) with Dr. [Khan](doctor_name) on [Oct 15](appointment_date) at [11:00 AM](appointment_time)
+    - I'd like to book a [pediatrics](service) visit for [Tommy](patient_name) next Thursday at [3pm](appointment_time)
+    - reserve a slot for [vaccination](service) on [2025-11-01](appointment_date)
+    - make appointment with Dr. [Sen](doctor_name) for [Orthopedics](service) on [20 Oct](appointment_date)
+    - schedule under the name [Alice](patient_name) with Dr. [Roy](doctor_name) tomorrow afternoon
+
+- intent: reschedule_appointment
+  examples: |
+    - reschedule my appointment with Dr. [Adams](doctor_name) from [12/10/2025](appointment_date) to [14/10/2025](appointment_date)
+    - move my follow-up to next Monday
+    - can you reschedule my appointment for [John Doe](patient_name) to [2025-10-20](appointment_date) at [11am](appointment_time)?
+    - change my appointment time to [3pm](appointment_time)
+    - please shift my appointment with Dr. [Kumar](doctor_name) to [16 Oct](appointment_date) in the afternoon
+    - I need to change my visit from [10/10/2025](appointment_date) to [11/10/2025](appointment_date)
+    - update booking for [Emily](patient_name) to next Wednesday at [09:00 AM](appointment_time)
+
+- intent: cancel_appointment
+  examples: |
+    - cancel my appointment with Dr. [Lee](doctor_name) on [13/10/2025](appointment_date)
+    - I cannot make it tomorrow, please cancel
+    - cancel all my appointments for today
+    - please cancel the booking under [John Doe](patient_name)
+    - remove my appointment with Dr. [Patel](doctor_name) on [15 Oct](appointment_date)
+    - abort the appointment scheduled on [2025-10-12](appointment_date)
+    - cancel appointment id [ABC123](appointment_id)
+
+- intent: view_appointments
+  examples: |
+    - show me all my appointments
+    - list upcoming sessions
+    - what appointments do I have tomorrow?
+    - can you display my scheduled visits?
+    - do I have anything booked with Dr. [Adams](doctor_name)?
+    - list appointments for [Alice Johnson](patient_name)
+    - show my bookings for next week
+
+# -------------------------
+# Information
+# -------------------------
+- intent: inform
+  examples: |
+    - patient name is [John Doe](patient_name)
+    - patient name is [Alice Johnson](patient_name)
+    - it's for [vaccination](service)
+    - it's for [physiotherapy](service)
+    - my reason is [emergency](reason)
+    - my reason is [routine checkup](reason)
+    - my reason is [follow-up](reason)
+    - my reason is [dental pain](reason)
+    - the doctor is [Dr. Smith](doctor_name)
+    - the doctor is [Dr. Lee](doctor_name)
+    - I need it at [10 am](appointment_time)
+    - please schedule it for [12 Oct](appointment_date)
+    - book under the name [Alice Johnson](patient_name)
+    - appointment id is [XYZ789](appointment_id)
+    - prefer timezone [Asia/Calcutta](timezone)
+    - prefer timezone [Asia/Kolkata](timezone)
+    - prefer timezone [GMT+5:30](timezone)
+    - the service should be [Dermatology](service)
+    - schedule it [tomorrow](appointment_date)
+    - reschedule for [next Monday](appointment_date)
+    - book at [3:30pm](appointment_time)
+    - set appointment [2025-10-15 09:00](appointment_date)
+    - move my visit [next week](appointment_date)
+    - change time to [14:00](appointment_time)
+
+# -------------------------
+# Fallback
+# -------------------------
+- intent: fallback
+  examples: |
+    - asdfghjkl
+    - blah blah
+    - random text
+    - 12345
+    - I don't know what to say
+    - gibberish input
+    - test test

@@ -1,0 +1,166 @@
+version: "3.1"
+
+intents:
+  - greet
+  - goodbye
+  - affirm
+  - deny
+  - inform
+  - ask_available_slots
+  - reschedule_appointment
+  - cancel_appointment
+  - view_appointments
+  - book_appointment
+  - confirm_action
+  - fallback
+
+entities:
+  - patient_name
+  - doctor_name
+  - appointment_date
+  - appointment_time
+  - service
+  - reason
+  - appointment_id
+  - timezone
+
+slots:
+  patient_name:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: from_entity
+        entity: patient_name
+      - type: from_text
+
+  doctor_name:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: from_entity
+        entity: doctor_name
+      - type: from_text
+
+  appointment_date:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: from_entity
+        entity: appointment_date
+      - type: from_entity
+        entity: time
+      - type: from_text
+
+  appointment_time:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: from_entity
+        entity: appointment_time
+      - type: from_entity
+        entity: time
+      - type: from_text
+
+  service:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: from_entity
+        entity: service
+      - type: from_text
+
+  reason:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: reason
+      - type: from_text
+
+  appointment_id:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: appointment_id
+      - type: from_text
+
+  timezone:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: timezone
+      - type: from_text
+
+  confirmation:
+    type: bool
+    influence_conversation: true
+    mappings:
+      - type: from_intent
+        intent: affirm
+        value: true
+      - type: from_intent
+        intent: deny
+        value: false
+      - type: from_intent
+        intent: confirm_action
+        value: true
+
+responses:
+  utter_greet:
+    - text: "Hello! I can help you book, reschedule, cancel, or view appointments. How can I help today?"
+
+  utter_goodbye:
+    - text: "Goodbye — wishing you a healthy day!"
+
+  utter_ask_patient_name:
+    - text: "Please tell me the patient's full name."
+
+  utter_ask_doctor_name:
+    - text: "Which doctor is the appointment with?"
+
+  utter_ask_appointment_date:
+    - text: "Which date would you like? (e.g., 2025-10-12 or 'next Monday')"
+
+  utter_ask_appointment_time:
+    - text: "What time do you prefer? (e.g., 10:30 AM)"
+
+  utter_ask_service:
+    - text: "Which service is this for? (e.g., General Consultation, Dental, Physiotherapy)"
+
+  utter_ask_reason:
+    - text: "Can you briefly state the reason for rescheduling or cancellation?"
+
+  utter_ask_confirmation:
+    - text: "Do you want me to proceed with this action?"
+
+  utter_no_available_slots:
+    - text: "There are no slots at that time. Would you like the next available slots?"
+
+  utter_success_booking:
+    - text: "Your appointment has been booked successfully."
+
+  utter_success_reschedule:
+    - text: "Your appointment has been rescheduled successfully."
+
+  utter_success_cancel:
+    - text: "Your appointment has been canceled successfully."
+
+  utter_list_appointments:
+    - text: "Here are your upcoming appointments:"
+
+  utter_fallback:
+    - text: "Sorry, I didn't understand that. Could you rephrase or try a different wording?"
+
+actions:
+  - action_book_appointment
+  - action_fetch_available_slots
+  - action_reschedule_appointment
+  - action_cancel_appointment
+  - action_list_appointments
+  - action_send_notification
+
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: true

@@ -1,0 +1,41 @@
+# -------------------------
+# Python / Rasa
+# -------------------------
+__pycache__/
+*.pyc
+.venv/
+env/
+venv/
+models/
+results/
+.cache/
+
+# -------------------------
+# Java / Spring Boot
+# -------------------------
+target/
+build/
+*.class
+*.jar
+.gradle/
+out/
+
+# -------------------------
+# Docker local volumes
+# -------------------------
+mysql-data/
+redis-data/
+rabbitmq-data/
+docker-data/
+
+# -------------------------
+# IDE / Editors
+# -------------------------
+.vscode/
+.idea/
+
+# -------------------------
+# Logs
+# -------------------------
+*.log
+logs/

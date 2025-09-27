@@ -1,0 +1,75 @@
+{
+  "info": {
+    "name": "Smart Scheduler Rasa + Appointment",
+    "_postman_id": "smart-scheduler-rasa-prod",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Rasa - Send Message",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sender\":\"user1\",\n  \"message\":\"Book me a general consultation tomorrow at 10am\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5005/webhooks/rest/webhook"
+        }
+      }
+    },
+    {
+      "name": "Rasa - Parse",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"text\":\"Cancel appointment 2001\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5005/model/parse"
+        }
+      }
+    },
+    {
+      "name": "Appointment - Book direct",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"service\": \"General Consultation\",\n  \"date\": \"2025-09-30\",\n  \"time\": \"10:00\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8082/api/appointments/book"
+        }
+      }
+    },
+    {
+      "name": "Appointment - List direct",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:8082/api/appointments"
+        }
+      }
+    }
+  ]
+}
