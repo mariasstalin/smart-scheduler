@@ -1,86 +1,41 @@
 version: "3.1"
 
 stories:
-- story: greet and book appointment
+
+- story: Book appointment with full details
+  steps:
+    - intent: ask_appointment
+    - action: appointment_form
+    - active_loop: appointment_form
+    - active_loop: null
+    - action: action_submit_appointment
+
+- story: Book appointment missing some details
+  steps:
+    - intent: ask_appointment
+      entities:
+        - doctor_name: "Dr. Smith"
+        - appointment_date: "tomorrow"
+    - action: appointment_form
+    - active_loop: appointment_form
+    - active_loop: null
+    - action: action_submit_appointment
+
+- story: User greets and then books
   steps:
     - intent: greet
     - action: utter_greet
-    - intent: book_appointment
-    - action: utter_ask_patient_name
-    - intent: inform
-      entities:
-        - patient_name: "John Doe"
-    - action: utter_ask_doctor_name
-    - intent: inform
-      entities:
-        - doctor_name: "Dr. Smith"
-    - action: utter_ask_appointment_date
-    - intent: inform
-      entities:
-        - appointment_date: "2025-10-12"
-        - time: "2025-10-12T10:00:00.000Z"
-    - action: utter_ask_appointment_time
-    - intent: inform
-      entities:
-        - appointment_time: "10:00 AM"
-        - time: "2025-10-12T10:00:00.000Z"
-    - action: utter_ask_service
-    - intent: inform
-      entities:
-        - service: "physiotherapy"
-    - action: utter_ask_confirmation
-    - intent: affirm
-    - action: action_book_appointment
-    - action: utter_success_booking
+    - intent: ask_appointment
+    - action: appointment_form
+    - active_loop: appointment_form
+    - active_loop: null
+    - action: action_submit_appointment
 
-- story: cancel appointment
+- story: Cancel appointment flow
   steps:
-    - intent: cancel_appointment
-    - action: utter_ask_patient_name
-    - intent: inform
-      entities:
-        - patient_name: "John Doe"
-    - action: utter_ask_confirmation
-    - intent: affirm
-    - action: action_cancel_appointment
-    - action: utter_success_cancel
-
-- story: reschedule appointment
-  steps:
-    - intent: reschedule_appointment
-    - action: utter_ask_patient_name
-    - intent: inform
-      entities:
-        - patient_name: "John Doe"
-    - action: utter_ask_doctor_name
-    - intent: inform
-      entities:
-        - doctor_name: "Dr. Smith"
-    - action: utter_ask_appointment_date
-    - intent: inform
-      entities:
-        - appointment_date: "2025-10-15"
-        - time: "2025-10-15T11:00:00.000Z"
-    - action: utter_ask_appointment_time
-    - intent: inform
-      entities:
-        - appointment_time: "11:00 AM"
-    - action: utter_ask_confirmation
-    - intent: affirm
-    - action: action_reschedule_appointment
-    - action: utter_success_reschedule
-
-- story: check available slots
-  steps:
-    - intent: ask_available_slots
-    - action: action_fetch_available_slots
-
-- story: view appointments
-  steps:
-    - intent: view_appointments
-    - action: action_list_appointments
-
-- story: fallback story
-  steps:
-    - intent: fallback
-    - action: utter_fallback
+    - intent: ask_appointment
+    - action: appointment_form
+    - active_loop: appointment_form
+    - intent: deny
+    - action: utter_form_cancel
+    - active_loop: null

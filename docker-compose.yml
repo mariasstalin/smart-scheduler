@@ -83,6 +83,7 @@ services:
     depends_on:
       - duckling
       - rasa-actions
+      - mysql
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:5005/ || exit 1"]
       interval: 10s
