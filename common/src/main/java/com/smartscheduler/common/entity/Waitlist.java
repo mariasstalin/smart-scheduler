@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "waitlist")
@@ -31,10 +32,8 @@ public class Waitlist {
     @OneToOne
     private Appointment appointment;
 
-    @ElementCollection
-    @CollectionTable(name = "waitlist_preferred_dates", joinColumns = @JoinColumn(name = "waitlist_id"))
-    @Column(name = "preferred_date")
-    private List<Instant> preferredDates;
+    @OneToMany(mappedBy = "waitlist", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<WaitlistPreferredDate> preferredDates;
 
     private Boolean active;
 

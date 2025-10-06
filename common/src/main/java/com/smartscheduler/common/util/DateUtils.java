@@ -46,7 +46,7 @@ public final class DateUtils {
         return localDate.atStartOfDay(zoneId).toInstant();
     }
 
-    public static Instant parseIsoDateTime(String isoTime) {
+    public static Instant parseDateTimeIso(String isoTime) {
         if (isoTime == null || isoTime.isBlank()) throw new IllegalArgumentException("No valid date provided");
         try {
             return Instant.parse(isoTime.replace("+00:00", "Z"));

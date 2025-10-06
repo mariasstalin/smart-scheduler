@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 @Data
 @Builder
@@ -19,5 +21,13 @@ public class SlotRescheduledEvent implements Serializable {
     private Long doctorId;
     private Instant startTime;
     private Instant endTime;
+
+    public LocalDateTime getStartTimeLocal() {
+        return LocalDateTime.ofInstant(startTime, ZoneId.of("UTC"));
+    }
+
+    public LocalDateTime getEndTimeLocal() {
+        return LocalDateTime.ofInstant(endTime, ZoneId.of("UTC"));
+    }
 }
 

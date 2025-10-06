@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 @Entity
 @Table(name = "patients")
@@ -36,6 +37,12 @@ public class Patient {
     private Integer totalNotificationsSent;
     private Integer totalNotificationsResponded;
 
+    private Integer consecutiveMisses;
+
+    public ZoneId getTimeZoneId() {
+        return ZoneId.of(timeZone);
+    }
+
     @Transient
     public double getPriorityScore() {
         double score = 0.0;
@@ -57,8 +64,5 @@ public class Patient {
         return Math.min(score, 100);
     }
 
-    public double getConsecutiveMisses() {
-
-    }
 }
 

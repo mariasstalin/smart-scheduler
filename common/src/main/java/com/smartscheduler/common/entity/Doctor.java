@@ -7,7 +7,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 @Entity
 @Table(name = "doctors")
@@ -26,5 +28,10 @@ public class Doctor {
     private String specialization;
     private Instant createdAt;
     private String timeZone;
+
+    public ZoneId getTimeZoneId() {
+        return ZoneId.of(timeZone);
+    }
+
 }
 

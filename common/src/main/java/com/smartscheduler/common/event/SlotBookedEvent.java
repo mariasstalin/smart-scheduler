@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 @Data
 @AllArgsConstructor
@@ -17,4 +18,12 @@ public class SlotBookedEvent {
     private Long patientId;
     private Instant startTime;
     private Instant endTime;
+
+    public LocalDateTime getStartTimeLocal() {
+        return LocalDateTime.ofInstant(startTime, ZoneId.of("UTC"));
+    }
+
+    public LocalDateTime getEndTimeLocal() {
+        return LocalDateTime.ofInstant(endTime, ZoneId.of("UTC"));
+    }
 }

@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 @Entity
 @Table(name = "notifications")
@@ -53,6 +54,13 @@ public class Notification {
 
     private Channel channel;
 
+    public LocalDateTime getStartTimeLocal() {
+        return LocalDateTime.ofInstant(startTime, ZoneId.of("UTC"));
+    }
+
+    public LocalDateTime getEndTimeLocal() {
+        return LocalDateTime.ofInstant(endTime, ZoneId.of("UTC"));
+    }
 
     public enum NotificationType {
         SLOT_OPEN, REMINDER, CONFIRMATION

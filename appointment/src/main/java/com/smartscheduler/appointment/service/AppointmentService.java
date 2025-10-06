@@ -39,8 +39,8 @@ public class AppointmentService {
         Doctor doctor = findOrCreateDoctor(Long.valueOf(payload.getStaffId()), payload.getStaffName(), payload.getStaffEmail(), payload.getStaffPhone(), payload.getStaffSpecialization());
         Patient patient = findOrCreatePatient(payload.getPatientName(), payload.getPatientEmail(), payload.getPatientPhone());
 
-        Instant startTime = DateUtils.parseIsoDateTime(payload.getStartTimeIso());
-        Instant endTime = DateUtils.parseIsoDateTime(payload.getEndTimeIso());
+        Instant startTime = DateUtils.parseDateTimeIso(payload.getStartTimeIso());
+        Instant endTime = DateUtils.parseDateTimeIso(payload.getEndTimeIso());
 
         Appointment appointment = Appointment.builder()
                 .zohoId(payload.getBookingId())
@@ -59,7 +59,7 @@ public class AppointmentService {
 
         List<String> slotAlertPreferredDateStrings = payload.getSlotAlertPreferredDates();
         if (!slotAlertPreferredDateStrings.isEmpty()) {
-            List<Instant> slotAlertPreferredDates = slotAlertPreferredDateStrings.stream().map(dateStr -> DateUtils.toInstantDate(dateStr, ZoneId.of(payload.getTimeZone()))).collect(Collectors.toList());
+            List<WaitlistPreferredDate> slotAlertPreferredDates = slotAlertPreferredDateStrings.stream().map(dateStr -> new WaitlistPreferredDate(DateUtils.toInstantDate(dateStr, ZoneId.of(payload.getTimeZone())))).collect(Collectors.toList());
             Waitlist wl = Waitlist.builder()
                     .doctor(doctor)
                     .patient(patient)
@@ -105,7 +105,7 @@ public class AppointmentService {
                 .build();
         slotCancellationRepository.save(sc);
 
-        SlotCancelledEvent slotCancelledEvent = new SlotCancelledEvent(appointment.getId(), appointment.getDoctor().getId(), appointment.getStartTime(), appointment.getEndTime());
+        SlotCancelledEvent slotCancelledEvent = new SlotCancelledEvent(appointment.getId(), appointment.getDoctor().getId(), appointment.getStartTime(), appointment.getEndTime(), appointment.getPatient().getTimeZoneId());
         rabbitTemplate.convertAndSend("appointments.exchange", "appointments.cancelled", slotCancelledEvent);
 
         log.info("Appointment cancelled and SlotCancelledEvent published: {}", appointment.getId());
@@ -167,7 +167,7 @@ public class AppointmentService {
 
         // Publish freed old slot event (so NotificationService can continue chain)
         if (oldAppointment != null) {
-            SlotCancelledEvent SlotCancelledEvent = new SlotCancelledEvent(oldAppointment.getId(), doctor.getId(), oldAppointment.getStartTime(), oldAppointment.getEndTime());
+            SlotCancelledEvent SlotCancelledEvent = new SlotCancelledEvent(oldAppointment.getId(), doctor.getId(), oldAppointment.getStartTime(), oldAppointment.getEndTime(), oldAppointment.getPatient().getTimeZoneId());
             rabbitTemplate.convertAndSend("appointments.exchange", "appointments.rescheduled", SlotCancelledEvent);
         }
 

@@ -2,7 +2,7 @@ package com.smartscheduler.notification.service;
 
 import com.smartscheduler.common.entity.*;
 import com.smartscheduler.common.event.*;
-import com.smartscheduler.notification.repository.*;
+import com.smartscheduler.common.repository.*;
 import com.smartscheduler.notification.twilio.TwilioClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,14 +45,14 @@ public class NotificationService {
 
         try {
             doctorRepository.findById(event.getDoctorId()).ifPresent(doctor -> {
-                processCancelledSlot(doctor, event.getStartTime(), event.getEndTime(), event);
+                processCancelledSlot(doctor, event.getStartTimeLocal(), event.getEndTimeLocal(), event);
             });
         } catch (Exception ex) {
             log.error("Exception while processing SlotCancelledEvent", ex);
         }
     }
 
-    private void processCancelledSlot(Doctor doctor, Instant slotStart, Instant slotEnd, SlotCancelledEvent event) {
+    private void processCancelledSlot(Doctor doctor, LocalDateTime slotStart, LocalDateTime slotEnd, SlotCancelledEvent event) {
         LocalDate slotDateUtc = slotStart.toLocalDate();
         log.info("Processing cancelled slot for doctor={}, slotStart={} (UTC date={})", doctor.getId(), slotStart, slotDateUtc);
 
@@ -83,7 +83,7 @@ public class NotificationService {
         candidates.removeIf(w -> w.getPatient() == null || w.getPatient().getConsecutiveMisses() >= MAX_CONSECUTIVE_MISSES);
 
         if (!candidates.isEmpty()) {
-            notifyWaitlistSequentially(candidates.iterator(), doctor, slotStart, event);
+            notifyWaitlistSequentially(candidates.iterator(), doctor, slotStart, slotEnd, event);
             return;
         }
 
@@ -100,11 +100,16 @@ public class NotificationService {
     }
 
     private boolean preferredDatesContainUtcDate(Waitlist w, LocalDate slotDateUtc) {
-        if (w.getPreferredDates() == null) return false;
-        for (Instant pref : w.getPreferredDates()) {
-            if (pref == null) continue;
-            LocalDate d = LocalDateTime.ofInstant(pref, ZoneOffset.UTC).toLocalDate();
-            if (d.equals(slotDateUtc)) return true;
+        if (w.getPreferredDates() == null) {
+            return false;
+        }
+        for (WaitlistPreferredDate waitlistPreferredDate : w.getPreferredDates()) {
+            if (waitlistPreferredDate == null) {
+                continue;
+            }
+            if (waitlistPreferredDate.getPreferredDateLocal().equals(slotDateUtc)) {
+                return true;
+            }
         }
         return false;
     }
@@ -116,9 +121,9 @@ public class NotificationService {
         return Math.max(0.0, base - penalty);
     }
 
-    private void notifyWaitlistSequentially(Iterator<Waitlist> it, Doctor doctor, LocalDateTime slotStart, SlotCancelledEvent event) {
+    private void notifyWaitlistSequentially(Iterator<Waitlist> it, Doctor doctor, LocalDateTime slotStart, LocalDateTime slotEnd, SlotCancelledEvent event) {
         if (!it.hasNext()) {
-            processCancelledSlot(doctor, slotStart, event); // fallback
+            processCancelledSlot(doctor, slotStart, slotEnd, event); // fallback
             return;
         }
 
@@ -126,7 +131,7 @@ public class NotificationService {
         Patient patient = wl.getPatient();
         if (patient == null) {
             log.warn("Waitlist {} has no patient, skip", wl.getId());
-            notifyWaitlistSequentially(it, doctor, slotStart, event);
+            notifyWaitlistSequentially(it, doctor, slotStart, slotEnd, event);
             return;
         }
 
@@ -139,7 +144,7 @@ public class NotificationService {
                 waitlistRepository.save(wl);
             } else {
                 log.info("Skipping inactive waitlist id={} for patient={}", wl.getId(), patient.getId());
-                notifyWaitlistSequentially(it, doctor, slotStart, event);
+                notifyWaitlistSequentially(it, doctor, slotStart, slotEnd, event);
                 return;
             }
         }
@@ -153,8 +158,8 @@ public class NotificationService {
                 .status(Notification.Status.SENT)
                 .sentAt(Instant.now())
                 .expiresAt(Instant.now().plus(Duration.ofMinutes(RESPONSE_WINDOW_MINUTES)))
-                .startTime(slotStart.atZone(ZoneOffset.UTC).toInstant().toString())
-                .endTime(slotStart.plusMinutes(30).atZone(ZoneOffset.UTC).toInstant().toString())
+                .startTime(slotStart.toInstant(ZoneOffset.UTC))
+                .endTime(slotEnd.toInstant(ZoneOffset.UTC))
                 .build();
         notificationRepository.save(notification);
 
@@ -173,30 +178,30 @@ public class NotificationService {
             twilioClient.sendMessage(patient.getPhone(), msg);
         } catch (Exception ex) {
             log.error("Failed to send Twilio message to patientId={}, skipping to next candidate", patient.getId(), ex);
-            notif.setStatus(Notification.Status.EXPIRED);
-            notificationRepository.save(notif);
+            notification.setStatus(Notification.Status.EXPIRED);
+            notificationRepository.save(notification);
             // do not increment consecutiveMisses here (send failure is not patient fault)
-            notifyWaitlistSequentially(it, doctor, slotStart, event);
+            notifyWaitlistSequentially(it, doctor, slotStart, slotEnd, event);
             return;
         }
 
         // schedule timeout task
-        ScheduledFuture<?> future = scheduler.schedule(() -> handleWaitlistTimeout(notif.getId(), it, doctor, slotStart, event), RESPONSE_WINDOW_MINUTES, TimeUnit.MINUTES);
-        timeoutTasks.put(notif.getId(), future);
+        ScheduledFuture<?> future = scheduler.schedule(() -> handleWaitlistTimeout(notification.getId(), it, doctor, slotStart, event), RESPONSE_WINDOW_MINUTES, TimeUnit.MINUTES);
+        timeoutTasks.put(notification.getId(), future);
     }
 
     @Transactional
-    protected void handleWaitlistTimeout(Long notificationId, Iterator<Waitlist> it, Doctor doctor, LocalDateTime slotStart, SlotCancelledEvent event) {
+    protected void handleWaitlistTimeout(Long notificationId, Iterator<Waitlist> it, Doctor doctor, LocalDateTime slotStart, LocalDateTime slotEnd, SlotCancelledEvent event) {
         Notification notif = notificationRepository.findById(notificationId).orElse(null);
         if (notif == null) {
-            notifyWaitlistSequentially(it, doctor, slotStart, event);
+            notifyWaitlistSequentially(it, doctor, slotStart, slotEnd, event);
             return;
         }
 
         if (notif.getStatus() == Notification.Status.SENT) {
             // expired w/o response
             notif.setStatus(Notification.Status.EXPIRED);
-            notif.setExpiresAt(LocalDateTime.now());
+            notif.setExpiresAt(Instant.now());
             notificationRepository.save(notif);
 
             Patient patient = notif.getPatient();

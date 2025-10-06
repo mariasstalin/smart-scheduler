@@ -42,8 +42,8 @@ public class ReschedulerService {
                 "oldAppointmentId", event.getAppointmentId(),
                 "patientId", event.getPatientId(),
                 "doctorId", event.getDoctorId(),
-                "requestedStartIso", event.getRequestedStartIso(),
-                "requestedEndIso", event.getRequestedEndIso()
+                "requestedStartIso", event.getStartTime(),
+                "requestedEndIso", event.getEndTime()
         );
 
         try {

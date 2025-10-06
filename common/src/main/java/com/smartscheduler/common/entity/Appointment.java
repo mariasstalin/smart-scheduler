@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.OffsetTime;
+import java.time.ZoneId;
 
 @Entity
 @Table(name = "appointments")
@@ -45,7 +47,13 @@ public class Appointment {
 
     private Boolean isWhatsappNumber;
 
+    public LocalDateTime getStartTimeLocal() {
+        return LocalDateTime.ofInstant(startTime, ZoneId.of("UTC"));
+    }
 
+    public LocalDateTime getEndTimeLocal() {
+        return LocalDateTime.ofInstant(endTime, ZoneId.of("UTC"));
+    }
 
     public enum Status {
         UPCOMING, CANCELLED, COMPLETED, RESCHEDULED
