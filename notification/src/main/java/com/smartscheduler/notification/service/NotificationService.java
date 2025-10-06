@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.*;
+import java.time.temporal.TemporalAmount;
 import java.time.temporal.TemporalUnit;
 import java.util.*;
 import java.util.concurrent.*;
@@ -173,7 +174,7 @@ public class NotificationService {
 
         // send message (Twilio wrapper). Twilio client expected to be robust/retry internally.
         String humanSlot = slotStart.toString() + " (UTC)"; // in prod convert to patient's timezone for message
-        String msg = String.format("Slot available at %s. Reply YES to confirm. (notificationId:%d)", humanSlot, notif.getId());
+        String msg = String.format("Slot available at %s. Reply YES to confirm. (notificationId:%d)", humanSlot, notification.getId());
         try {
             twilioClient.sendMessage(patient.getPhone(), msg);
         } catch (Exception ex) {
@@ -186,7 +187,7 @@ public class NotificationService {
         }
 
         // schedule timeout task
-        ScheduledFuture<?> future = scheduler.schedule(() -> handleWaitlistTimeout(notification.getId(), it, doctor, slotStart, event), RESPONSE_WINDOW_MINUTES, TimeUnit.MINUTES);
+        ScheduledFuture<?> future = scheduler.schedule(() -> handleWaitlistTimeout(notification.getId(), it, doctor, slotStart, slotEnd, event), RESPONSE_WINDOW_MINUTES, TimeUnit.MINUTES);
         timeoutTasks.put(notification.getId(), future);
     }
 
@@ -223,7 +224,7 @@ public class NotificationService {
 
             timeoutTasks.remove(notificationId);
             // continue chain to next waitlist candidate
-            notifyWaitlistSequentially(it, doctor, slotStart, event);
+            notifyWaitlistSequentially(it, doctor, slotStart, slotEnd, event);
         } else {
             // already handled (responded)
             timeoutTasks.remove(notificationId);
@@ -246,8 +247,8 @@ public class NotificationService {
                 .doctor(doctor)
                 .notificationType(Notification.NotificationType.SLOT_OPEN)
                 .status(Notification.Status.SENT)
-                .sentAt(LocalDateTime.now())
-                .expiresAt(LocalDateTime.now().plusMinutes(RESPONSE_WINDOW_MINUTES))
+                .sentAt(Instant.now())
+                .expiresAt(Instant.now().plus(RESPONSE_WINDOW_MINUTES))
                 .requestedStartIso(slotStart.atZone(ZoneOffset.UTC).toInstant().toString())
                 .requestedEndIso(slotStart.plusMinutes(Duration.between(appt.getStartTime(), appt.getEndTime()).toMinutes()).atZone(ZoneOffset.UTC).toInstant().toString())
                 .build();
@@ -283,7 +284,7 @@ public class NotificationService {
 
         if (notif.getStatus() == Notification.Status.SENT) {
             notif.setStatus(Notification.Status.EXPIRED);
-            notif.setExpiresAt(LocalDateTime.now());
+            notif.setExpiresAt(Instant.now());
             notificationRepository.save(notif);
 
             // increment consecutive misses for the patient (future appointment owner) - may apply same opt-out logic
@@ -329,7 +330,7 @@ public class NotificationService {
 
             if ("YES".equalsIgnoreCase(resp)) {
                 notif.setStatus(Notification.Status.CONFIRMED);
-                notif.setConfirmedAt(LocalDateTime.now());
+                notif.setConfirmedAt(Instant.now());
                 notificationRepository.save(notif);
 
                 // update patient stats
@@ -354,7 +355,7 @@ public class NotificationService {
                 // NO or any other response => mark declined and re-emit the slot cancelled so chain continues
                 notif.setStatus(Notification.Status.RESPONDED);
                 notif.setResponse(Notification.Response.NO);
-                notif.setExpiresAt(LocalDateTime.now());
+                notif.setExpiresAt(Instant.now());
                 notificationRepository.save(notif);
 
                 // increment consecutive misses? The patient actively declined, we treat as responded (do not increment consecutive misses)
