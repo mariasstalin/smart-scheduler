@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smartscheduler.common.dto.AppointmentMessage;
 import com.smartscheduler.notification.model.Notification;
-import com.smartscheduler.notification.repo.NotificationRepository;
 import com.twilio.Twilio;
 import com.twilio.rest.api.v2010.account.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;

@@ -6,6 +6,11 @@ spring:
   application:
     name: appointment
 
+zoho:
+  api:
+    base-url: https://api.zoho.com/bookings
+    api-key: ${ZOHO_API_KEY:}
+
 management:
   endpoints:
     web:

@@ -1,6 +1,5 @@
 package com.smartscheduler.notification.web;
 
-import com.smartscheduler.notification.service.RasaService;
 import com.smartscheduler.notification.service.TwilioService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

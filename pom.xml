@@ -31,7 +31,6 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
-
     </dependencies>
   </dependencyManagement>
 
@@ -42,6 +41,7 @@
     <module>gateway</module>
     <module>user</module>
     <module>appointment</module>
+	<module>rescheduler</module>
     <module>notification</module>
     <module>audit</module>
     <!-- <module>ui</module> -->
