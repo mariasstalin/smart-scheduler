@@ -92,7 +92,7 @@ public class NotificationService {
         List<Appointment> futureAppointments = appointmentRepository.findByDoctorAndStartTimeAfterAndStatus(doctor, slotStart, Appointment.Status.UPCOMING);
         futureAppointments.sort(Comparator.comparing(Appointment::getStartTime));
         if (!futureAppointments.isEmpty()) {
-            notifyFutureSequentially(futureAppointments.iterator(), doctor, slotStart, event);
+            notifyFutureSequentially(futureAppointments.iterator(), doctor, slotStart, slotEnd, event);
             return;
         }
 
@@ -231,64 +231,63 @@ public class NotificationService {
         }
     }
 
-    /* ===================== FUTURE APPOINTMENTS SEQUENTIAL ===================== */
-    private void notifyFutureSequentially(Iterator<Appointment> it, Doctor doctor, LocalDateTime slotStart, SlotCancelledEvent event) {
+    private void notifyFutureSequentially(Iterator<Appointment> it, Doctor doctor, LocalDateTime slotStart, LocalDateTime slotEnd, SlotCancelledEvent event) {
         if (!it.hasNext()) {
             openSlotToPublic(doctor, slotStart, event);
             return;
         }
 
-        Appointment appt = it.next();
-        Patient patient = appt.getPatient();
+        Appointment appointment = it.next();
+        Patient patient = appointment.getPatient();
 
-        Notification notif = Notification.builder()
+        Notification notification = Notification.builder()
                 .patient(patient)
-                .appointment(appt)
+                .appointment(appointment)
                 .doctor(doctor)
                 .notificationType(Notification.NotificationType.SLOT_OPEN)
                 .status(Notification.Status.SENT)
                 .sentAt(Instant.now())
-                .expiresAt(Instant.now().plus(RESPONSE_WINDOW_MINUTES))
-                .requestedStartIso(slotStart.atZone(ZoneOffset.UTC).toInstant().toString())
-                .requestedEndIso(slotStart.plusMinutes(Duration.between(appt.getStartTime(), appt.getEndTime()).toMinutes()).atZone(ZoneOffset.UTC).toInstant().toString())
+                .expiresAt(Instant.now().plus(Duration.ofMinutes(RESPONSE_WINDOW_MINUTES)))
+                .startTime(slotStart.toInstant(ZoneOffset.UTC))
+                .endTime(slotEnd.toInstant(ZoneOffset.UTC))
                 .build();
-        notificationRepository.save(notif);
+        notificationRepository.save(notification);
 
         patient.setTotalNotificationsSent(patient.getTotalNotificationsSent() + 1);
         patientRepository.save(patient);
 
         String humanSlot = slotStart.toString() + " (UTC)";
-        String msg = String.format("Slot available at %s. Reply YES to confirm. (notificationId:%d)", humanSlot, notif.getId());
+        String msg = String.format("Slot available at %s. Reply YES to confirm. (notificationId:%d)", humanSlot, notification.getId());
 
         try {
             twilioClient.sendMessage(patient.getPhone(), msg);
         } catch (Exception ex) {
             log.error("Failed to send Twilio message to patientId={}, skipping to next future appointment", patient.getId(), ex);
-            notif.setStatus(Notification.Status.EXPIRED);
-            notificationRepository.save(notif);
-            notifyFutureSequentially(it, doctor, slotStart, event);
+            notification.setStatus(Notification.Status.EXPIRED);
+            notificationRepository.save(notification);
+            notifyFutureSequentially(it, doctor, slotStart, slotEnd, event);
             return;
         }
 
-        ScheduledFuture<?> future = scheduler.schedule(() -> handleFutureTimeout(notif.getId(), it, doctor, slotStart, event), RESPONSE_WINDOW_MINUTES, TimeUnit.MINUTES);
-        timeoutTasks.put(notif.getId(), future);
+        ScheduledFuture<?> future = scheduler.schedule(() -> handleFutureTimeout(notification.getId(), it, doctor, slotStart, slotEnd, event), RESPONSE_WINDOW_MINUTES, TimeUnit.MINUTES);
+        timeoutTasks.put(notification.getId(), future);
     }
 
     @Transactional
-    protected void handleFutureTimeout(Long notificationId, Iterator<Appointment> it, Doctor doctor, LocalDateTime slotStart, SlotCancelledEvent event) {
-        Notification notif = notificationRepository.findById(notificationId).orElse(null);
-        if (notif == null) {
-            notifyFutureSequentially(it, doctor, slotStart, event);
+    protected void handleFutureTimeout(Long notificationId, Iterator<Appointment> it, Doctor doctor, LocalDateTime slotStart, LocalDateTime slotEnd, SlotCancelledEvent event) {
+        Notification notification = notificationRepository.findById(notificationId).orElse(null);
+        if (notification == null) {
+            notifyFutureSequentially(it, doctor, slotStart, slotEnd, event);
             return;
         }
 
-        if (notif.getStatus() == Notification.Status.SENT) {
-            notif.setStatus(Notification.Status.EXPIRED);
-            notif.setExpiresAt(Instant.now());
-            notificationRepository.save(notif);
+        if (notification.getStatus() == Notification.Status.SENT) {
+            notification.setStatus(Notification.Status.EXPIRED);
+            notification.setExpiresAt(Instant.now());
+            notificationRepository.save(notification);
 
             // increment consecutive misses for the patient (future appointment owner) - may apply same opt-out logic
-            Patient patient = notif.getPatient();
+            Patient patient = notification.getPatient();
             patient.setConsecutiveMisses(patient.getConsecutiveMisses() + 1);
             patientRepository.save(patient);
 
@@ -303,35 +302,34 @@ public class NotificationService {
             }
 
             timeoutTasks.remove(notificationId);
-            notifyFutureSequentially(it, doctor, slotStart, event);
+            notifyFutureSequentially(it, doctor, slotStart, slotEnd, event);
         } else {
             timeoutTasks.remove(notificationId);
         }
     }
 
-    /* ===================== PATIENT RESPONSE HANDLER ===================== */
     @RabbitListener(queues = "appointments.patient_response")
     @Transactional
     public void onPatientResponse(PatientResponseEvent responseEvent) {
         log.info("Received PatientResponseEvent: {}", responseEvent);
 
-        notificationRepository.findById(responseEvent.getNotificationId()).ifPresent(notif -> {
-            if (notif.getStatus() != Notification.Status.SENT) {
-                log.info("Notification {} already handled (status={})", notif.getId(), notif.getStatus());
+        notificationRepository.findById(responseEvent.getNotificationId()).ifPresent(notification -> {
+            if (notification.getStatus() != Notification.Status.SENT) {
+                log.info("Notification {} already handled (status={})", notification.getId(), notification.getStatus());
                 return;
             }
 
-            Patient patient = notif.getPatient();
+            Patient patient = notification.getPatient();
             String resp = responseEvent.getResponse();
 
             // Cancel timeout task
-            ScheduledFuture<?> future = timeoutTasks.remove(notif.getId());
+            ScheduledFuture<?> future = timeoutTasks.remove(notification.getId());
             if (future != null) future.cancel(false);
 
             if ("YES".equalsIgnoreCase(resp)) {
-                notif.setStatus(Notification.Status.CONFIRMED);
-                notif.setConfirmedAt(Instant.now());
-                notificationRepository.save(notif);
+                notification.setStatus(Notification.Status.CONFIRMED);
+                notification.setConfirmedAt(Instant.now());
+                notificationRepository.save(notification);
 
                 // update patient stats
                 patient.setTotalNotificationsResponded(patient.getTotalNotificationsResponded() + 1);
@@ -340,39 +338,38 @@ public class NotificationService {
 
                 // publish reschedule request to rescheduler queue (SlotRescheduledEvent)
                 SlotRescheduledEvent res = SlotRescheduledEvent.builder()
-                        .notificationId(notif.getId())
-                        .appointmentId(notif.getAppointment() != null ? notif.getAppointment().getId() : null)
+                        .notificationId(notification.getId())
+                        .appointmentId(notification.getAppointment() != null ? notification.getAppointment().getId() : null)
                         .patientId(patient.getId())
-                        .doctorId(notif.getDoctor().getId())
-                        .requestedStartIso(notif.getRequestedStartIso())
-                        .requestedEndIso(notif.getRequestedEndIso())
+                        .doctorId(notification.getDoctor().getId())
+                        .startTime(notification.getStartTime())
+                        .endTime(notification.getEndTime())
                         .build();
 
                 rabbitTemplate.convertAndSend("reschedule_request_queue", res);
-                log.info("Published SlotRescheduledEvent notificationId={}", notif.getId());
+                log.info("Published SlotRescheduledEvent notificationId={}", notification.getId());
 
             } else {
                 // NO or any other response => mark declined and re-emit the slot cancelled so chain continues
-                notif.setStatus(Notification.Status.RESPONDED);
-                notif.setResponse(Notification.Response.NO);
-                notif.setExpiresAt(Instant.now());
-                notificationRepository.save(notif);
+                notification.setStatus(Notification.Status.RESPONDED);
+                notification.setResponse(Notification.Response.NO);
+                notification.setExpiresAt(Instant.now());
+                notificationRepository.save(notification);
 
                 // increment consecutive misses? The patient actively declined, we treat as responded (do not increment consecutive misses)
                 // Re-emit SlotCancelledEvent so NotificationService picks next candidate
                 SlotCancelledEvent reEmit = new SlotCancelledEvent(
-                        notif.getAppointment() != null ? notif.getAppointment().getId() : null,
-                        notif.getDoctor().getId(),
-                        notif.getRequestedStartIso(),
-                        notif.getRequestedEndIso()
+                        notification.getAppointment() != null ? notification.getAppointment().getId() : null,
+                        notification.getDoctor().getId(),
+                        notification.getStartTime(),
+                        notification.getEndTime()
                 );
                 rabbitTemplate.convertAndSend("appointments.exchange", "appointments.cancelled", reEmit);
-                log.info("Patient declined; re-emitted SlotCancelledEvent for doctor={} slot={}", notif.getDoctor().getId(), notif.getRequestedStartIso());
+                log.info("Patient declined; re-emitted SlotCancelledEvent for doctor={} slot={}", notification.getDoctor().getId(), notification.getStartTime());
             }
         });
     }
 
-    /* ===================== OPEN SLOT TO PUBLIC ===================== */
     private void openSlotToPublic(Doctor doctor, LocalDateTime slotStart, SlotCancelledEvent event) {
         log.info("Opening slot to public for doctor={} slotStart={}", doctor.getId(), slotStart);
         // Publish to appointments.exchange with routing key appointments.open — AppointmentService or a sync worker should handle making slot visible.

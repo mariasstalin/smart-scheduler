@@ -17,7 +17,6 @@ public class SlotCancelledEvent implements Serializable {
     private Long doctorId;
     private Instant startTime;
     private Instant endTime;
-    private ZoneId timeZoneId;
 
     public LocalDateTime getStartTimeLocal() {
         return LocalDateTime.ofInstant(startTime, ZoneId.of("UTC"));
