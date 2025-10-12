@@ -1,20 +1,23 @@
-package com.smartscheduler.appointment.web;
+package com.smartscheduler.demo.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.*;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @RestController
-@RequestMapping("/demo")
-public class DemoController {
+@RequestMapping("/appointment")
+public class AppointmentController {
 
     // Zoho credentials
     private static final String ACCESS_TOKEN = "YOUR_ACCESS_TOKEN";

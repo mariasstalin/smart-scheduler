@@ -1,0 +1,17 @@
+
+server:
+  port: 8888
+  servlet:
+    context-path: /demo
+
+spring:
+  application:
+    name: demo
+  thymeleaf:
+    cache: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

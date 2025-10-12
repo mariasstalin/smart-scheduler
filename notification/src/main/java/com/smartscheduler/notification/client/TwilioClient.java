@@ -1,16 +1,15 @@
-package com.smartscheduler.notification.twilio;
+package com.smartscheduler.notification.client;
 
 import com.twilio.Twilio;
 import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.type.PhoneNumber;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
-
 @Component
 @Slf4j
-public class TwilioClient {
+public class TwilioClient implements MessagingClient {
 
     private final String accountSid;
     private final String authToken;
@@ -27,10 +26,7 @@ public class TwilioClient {
         Twilio.init(accountSid, authToken);
     }
 
-    /**
-     * Send SMS/WhatsApp. Include notificationId in the message so replies can be correlated.
-     * Return Message SID (not used further here).
-     */
+    @Override
     public String sendMessage(String to, String body) {
         try {
             Message message = Message.creator(

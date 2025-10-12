@@ -39,12 +39,11 @@
     <module>discovery</module>
     <module>config</module>
     <module>gateway</module>
-    <module>user</module>
     <module>appointment</module>
 	<module>rescheduler</module>
     <module>notification</module>
     <module>audit</module>
-    <!-- <module>ui</module> -->
+    <module>demo</module>
   </modules>
 
   <build>

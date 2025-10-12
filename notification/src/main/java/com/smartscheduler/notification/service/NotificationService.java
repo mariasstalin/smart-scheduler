@@ -3,11 +3,12 @@ package com.smartscheduler.notification.service;
 import com.smartscheduler.common.entity.*;
 import com.smartscheduler.common.event.*;
 import com.smartscheduler.common.repository.*;
-import com.smartscheduler.notification.twilio.TwilioClient;
+import com.smartscheduler.notification.client.MessagingClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +28,8 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final DoctorRepository doctorRepository;
     private final PatientRepository patientRepository;
-    private final TwilioClient twilioClient;
+    @Qualifier("${messaging.provider}")
+    private final MessagingClient messagingClient;
     private final RabbitTemplate rabbitTemplate;
 
     // single-thread scheduling for sequencing notifications; pool size tuned to needs
@@ -176,7 +178,7 @@ public class NotificationService {
         String humanSlot = slotStart.toString() + " (UTC)"; // in prod convert to patient's timezone for message
         String msg = String.format("Slot available at %s. Reply YES to confirm. (notificationId:%d)", humanSlot, notification.getId());
         try {
-            twilioClient.sendMessage(patient.getPhone(), msg);
+            messagingClient.sendMessage(patient.getPhone(), msg);
         } catch (Exception ex) {
             log.error("Failed to send Twilio message to patientId={}, skipping to next candidate", patient.getId(), ex);
             notification.setStatus(Notification.Status.EXPIRED);
@@ -260,7 +262,7 @@ public class NotificationService {
         String msg = String.format("Slot available at %s. Reply YES to confirm. (notificationId:%d)", humanSlot, notification.getId());
 
         try {
-            twilioClient.sendMessage(patient.getPhone(), msg);
+            messagingClient.sendMessage(patient.getPhone(), msg);
         } catch (Exception ex) {
             log.error("Failed to send Twilio message to patientId={}, skipping to next future appointment", patient.getId(), ex);
             notification.setStatus(Notification.Status.EXPIRED);

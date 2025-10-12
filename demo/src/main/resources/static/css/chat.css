@@ -1,0 +1,171 @@
+/* General body styling */
+body {
+    margin: 0;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background-color: #ece5dd;
+    overflow-x: hidden; /* Prevent any horizontal scroll */
+}
+
+/* Main chat container */
+#chat-container {
+    max-width: 600px;
+    margin: 50px auto;
+    display: flex;
+    flex-direction: column;
+    height: 80vh;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    background-color: #ffffff;
+}
+
+/* Chat header */
+#chat-header {
+    background-color: #075e54;
+    color: white;
+    padding: 15px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 18px;
+}
+
+/* Message list */
+#messages {
+    flex: 1;
+    padding: 15px;
+    list-style: none;
+    margin: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    background-color: #ffffff;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal; /* ensure wrapping */
+}
+
+/* Individual message */
+.message {
+    display: flex;
+    align-items: flex-end;
+    margin: 5px 0;
+    max-width: 90%; /* Limit bubble width */
+    font-size: 14px;
+    line-height: 1.4;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+}
+
+/* Fix to avoid bubble overflow on small screens */
+.message .bubble {
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-break: break-word; /* ensures long words wrap */
+    white-space: normal;
+    display: inline-block;
+}
+
+/* Animation (optional) */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Bubble styling */
+.bubble {
+    padding: 10px 14px;
+    border-radius: 15px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+}
+
+/* System (bot) messages - left */
+.from-system {
+    align-self: flex-start;
+    flex-direction: row;
+}
+
+.from-system .bubble {
+    background-color: #f1f0f0;
+    color: #000;
+    border-top-left-radius: 0;
+}
+
+/* User messages - right */
+.from-user {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+}
+
+.from-user .bubble {
+    background-color: #dcf8c6;
+    color: #000;
+    border-top-right-radius: 0;
+}
+
+/* Avatar styling */
+.avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    margin: 0 6px;
+    flex-shrink: 0;
+}
+
+/* Input container */
+#input-container {
+    display: flex;
+    border-top: 1px solid #ddd;
+    background-color: #fff;
+    padding: 8px;
+    flex-shrink: 0;
+}
+
+/* Input field */
+#message-input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 20px;
+    outline: none;
+    font-size: 15px;
+    resize: none;
+    overflow-x: hidden;
+    word-wrap: break-word;
+}
+
+/* Send button */
+#send-btn {
+    margin-left: 10px;
+    padding: 10px 20px;
+    background-color: #128c7e;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 15px;
+    transition: background-color 0.2s;
+    flex-shrink: 0;
+}
+
+#send-btn:hover {
+    background-color: #0d6d62;
+}
+
+#send-btn:disabled {
+    background-color: #aaa;
+    cursor: not-allowed;
+}
+
+/* Scrollbar styling */
+#messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+#messages::-webkit-scrollbar-thumb {
+    background-color: rgba(0,0,0,0.2);
+    border-radius: 3px;
+}
