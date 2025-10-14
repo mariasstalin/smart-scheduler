@@ -1,0 +1,58 @@
+version: "3.1"
+
+stories:
+  - story: Greet and Goodbye
+    steps:
+      - intent: greet
+      - action: utter_greet
+      - intent: goodbye
+      - action: utter_goodbye
+
+  - story: Cancel appointment (Happy Path)
+    steps:
+      - intent: cancel_appointment
+      - action: cancel_form
+      - active_loop: cancel_form
+      - slot_was_set:
+          - cancel_datetime: "2025-12-01T10:00:00.000+00:00"
+      # Correct form submission events:
+      - active_loop: null
+      - action: action_cancel_appointment
+      - action: action_listen
+
+  - story: Reschedule appointment (Happy Path)
+    steps:
+      - intent: reschedule_appointment
+      - action: reschedule_form
+      - active_loop: reschedule_form
+      - slot_was_set:
+          - current_datetime: "2025-11-20T14:00:00.000+00:00"
+          - new_datetime: "2025-12-05T16:00:00.000+00:00"
+      # Correct form submission events:
+      - active_loop: null
+      - action: action_reschedule_appointment
+      - action: action_listen
+
+  # Story for the proactive notification flow - AFFIRM
+  - story: Proactive Notification Flow - Affirm
+    steps:
+      # Simulates external event to initiate the conversation
+      - slot_was_set:
+          - temp_new_slot_datetime: "2025-10-15T09:00:00.000+00:00"
+      - intent: external_new_slot
+      - action: utter_confirm_new_slot
+      - intent: affirm
+      - action: action_handle_slot_confirmation
+      - action: action_listen
+
+  # Story for the proactive notification flow - DENY
+  - story: Proactive Notification Flow - Deny
+    steps:
+      # Simulates external event to initiate the conversation
+      - slot_was_set:
+          - temp_new_slot_datetime: "2025-10-15T09:00:00.000+00:00"
+      - intent: external_new_slot
+      - action: utter_confirm_new_slot
+      - intent: deny
+      - action: action_handle_slot_confirmation
+      - action: action_listen
