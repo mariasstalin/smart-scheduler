@@ -1,97 +1,91 @@
 version: "3.1"
 
+# --- Intents ---
 intents:
-  - ask_appointment
+  - greet
+  - goodbye
   - affirm
   - deny
+  - reschedule_appointment
+  - cancel_appointment
   - inform
-  - ask_change
+  - external_new_slot # FIX 1: Added missing intent
 
+# --- Entities ---
 entities:
-  - patient_name
-  - doctor_name
-  - appointment_date
-  - appointment_time
-  - service
-  - phone_number
-  - email
+  - time
 
+# --- Slots (Bot Memory) ---
 slots:
-  patient_name:
-    type: text
+  temp_new_slot_datetime:
+    type: any
+    influence_conversation: false
     mappings:
-      - type: from_text
-  doctor_name:
+      - type: from_trigger_intent
+        intent: greet
+        value: "placeholder_value"
+
+  cancel_datetime:
     type: text
-    mappings:
-      - type: from_text
-  service:
-    type: text
-    mappings:
-      - type: from_text
-  appointment_date:
-    type: text
+    influence_conversation: true
     mappings:
       - type: from_entity
         entity: time
-  appointment_time:
+        not_intent: reschedule_appointment
+
+  current_datetime:
     type: text
+    influence_conversation: true
     mappings:
       - type: from_entity
         entity: time
-  phone_number:
-    type: text
-    mappings:
-      - type: from_text
-  email:
-    type: text
-    mappings:
-      - type: from_text
-  requested_slot:
-    type: text
-    mappings:
-      - type: from_text
 
-responses:
-  utter_ask_service:
-    - text: "Hello! I can help you schedule a clinic appointment. What kind of service or consultation is required? (e.g., cardiology, general checkup)"
-  utter_ask_patient_name:
-    - text: "Great! Who is the appointment for?"
-  utter_ask_doctor_name:
-    - text: "Which doctor would you like to see?"
-  utter_ask_appointment_date:
-    - text: "On which date would you like to schedule the appointment?"
-  utter_ask_appointment_time:
-    - text: "At what time should we schedule it?"
-  utter_ask_phone_number:
-    - text: "Can you provide a contact phone number?"
-  utter_ask_email:
-    - text: "Do you want to provide an email for confirmation? If yes, please enter it, otherwise type 'no'."
-  utter_submit_appointment:
-    - text: "Your appointment has been successfully booked! Here are the details:\n"
-  utter_cancel_appointment:
-    - text: "Okay, I've cancelled the appointment process. Let me know if you want to start again."
+  new_datetime:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: from_entity
+        entity: time
 
+
+# --- Forms ---
 forms:
-  appointment_form:
+  cancel_form:
     required_slots:
-      service:
-        - type: from_text
-      patient_name:
-        - type: from_text
-      doctor_name:
-        - type: from_text
-      appointment_date:
-        - type: from_entity
-          entity: time
-      appointment_time:
-        - type: from_entity
-          entity: time
-      phone_number:
-        - type: from_text
-      email:
-        - type: from_text
+      - cancel_datetime
 
+  reschedule_form:
+    required_slots:
+      - current_datetime
+      - new_datetime
+
+# --- Actions and Forms ---
 actions:
-  - action_submit_appointment
-  - validate_appointment_form
+  - action_handle_slot_confirmation
+  - action_cancel_appointment
+  - action_reschedule_appointment
+  - validate_cancel_form
+  - validate_reschedule_form
+
+# --- Responses (Templates) ---
+responses:
+  utter_greet:
+    - text: "Hello! How can I help you with your appointments today?"
+
+  utter_goodbye: # FIX 2: Added missing utterance for story use
+    - text: "Goodbye! Feel free to reach out if you need anything else."
+
+  utter_confirm_new_slot: # FIX 2: Added missing utterance for story use
+    - text: "I see a new slot is available on {temp_new_slot_datetime}. Would you like to confirm this?"
+
+  utter_ask_cancel_datetime:
+    - text: "What is the date and time of the appointment you wish to cancel?"
+
+  utter_ask_current_datetime:
+    - text: "What is the date and time of the *original* appointment you want to reschedule?"
+
+  utter_ask_new_datetime:
+    - text: "What is the *new* date and time you would like to reschedule to?"
+
+  utter_default_confirmation_message:
+    - text: "Would you like to confirm the change to {temp_new_slot_datetime}?"

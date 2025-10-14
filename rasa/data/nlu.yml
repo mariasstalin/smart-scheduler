@@ -1,413 +1,67 @@
 version: "3.1"
 
 nlu:
-- intent: greet
-  examples: |
-    - hi
-    - hello
-    - hey
-    - good morning
-    - good evening
-    - hi there
-    - hey bot
-    - hello assistant
-    - greetings
-    - howdy
-    - hiya
-    - hey there
-    - morning!
-    - evening!
-    - good to see you
-    - hi hi
-    - hello there
-    - hey buddy
-    - hi friend
-    - hello mate
-    - hi assistant
-    - hey assistant
-    - good day
-    - hello, how are you?
-    - hi, how’s it going?
-    - hey, what’s up?
-    - hi there!
-    - hello there!
-    - hi, good to see you
-    - hey, good to see you
-    - morning bot
-    - evening bot
-    - greetings bot
-    - hi, nice to meet you
-    - hey, nice to meet you
-    - hello, nice to meet you
-    - hi, assistant here
-    - hey, assistant here
-    - hello, assistant here
-    - good morning assistant
-    - good evening assistant
-    - hi there assistant
-    - hey there assistant
-    - hello there assistant
-    - greetings assistant
-    - hiya assistant
-    - hello friend
-    - hey friend
-    - hi buddy
+  - intent: greet
+    examples: |
+      - hi
+      - hello there
+      - good morning
+      - good day # Added for minimum examples
 
-- intent: goodbye
-  examples: |
-    - bye
-    - goodbye
-    - see you later
-    - talk to you soon
-    - catch you later
-    - see ya
-    - thanks, bye
-    - bye bye
-    - farewell
-    - take care
-    - see you
-    - later
-    - cya
-    - goodbye friend
-    - bye friend
-    - see you buddy
-    - talk later
-    - bye for now
-    - catch you later buddy
-    - goodbye buddy
-    - see you soon
-    - bye mate
-    - farewell mate
-    - bye assistant
-    - goodbye assistant
-    - see you assistant
-    - catch you later assistant
-    - bye bye assistant
-    - see you around
-    - talk soon
-    - goodbye, take care
-    - bye, take care
-    - see ya later
-    - farewell friend
-    - bye pal
-    - goodbye pal
-    - take care buddy
-    - talk later buddy
-    - cya buddy
-    - bye there
-    - goodbye there
-    - see you there
-    - bye everyone
-    - goodbye everyone
-    - talk to you later everyone
-    - see you later everyone
-    - bye all
-    - goodbye all
+  - intent: goodbye
+    examples: |
+      - bye
+      - gotta go
+      - see you later
+      - talk to you soon # Added for minimum examples
 
-- intent: affirm
-  examples: |
-    - yes
-    - yeah
-    - yup
-    - of course
-    - that’s right
-    - correct
-    - exactly
-    - sounds good
-    - sure
-    - absolutely
-    - definitely
-    - okay
-    - alright
-    - fine
-    - agreed
-    - yes please
-    - yes, go ahead
-    - yes, correct
-    - yup sure
-    - yes indeed
-    - exactly right
-    - that’s correct
-    - perfect
-    - sure thing
-    - yes, that’s good
-    - yes, sounds good
-    - yes, I agree
-    - correct, thanks
-    - yes, confirm
-    - indeed
-    - yes, I want that
-    - yes, please proceed
-    - exactly so
-    - yes, please continue
-    - yup, correct
-    - yes, proceed
-    - okay, sure
-    - yes, that’s fine
-    - yes, confirm that
-    - exactly that
-    - yes, exactly
-    - yes, okay
-    - yes, agreed
-    - indeed, correct
-    - yes, perfect
-    - yes, I agree completely
-    - yes, sounds perfect
+  - intent: affirm
+    examples: |
+      - yes
+      - yep
+      - sure
+      - confirm it
+      - that's right # Added for minimum examples
 
-- intent: deny
-  examples: |
-    - no
-    - nope
-    - not really
-    - don’t want that
-    - never mind
-    - cancel
-    - stop
-    - not now
-    - no thanks
-    - not at all
-    - I don’t want that
-    - no way
-    - absolutely not
-    - don’t
-    - negative
-    - none
-    - reject
-    - not interested
-    - no, thank you
-    - no, I don’t
-    - no, stop
-    - not this time
-    - don’t proceed
-    - not needed
-    - decline
-    - no, not now
-    - no, never mind
-    - no, cancel
-    - not required
-    - not today
-    - no, not today
-    - not necessary
-    - no, that’s fine
-    - no, thanks anyway
-    - not this
-    - not interested, thanks
-    - no, don’t
-    - nope, don’t
-    - no, not required
-    - not at this moment
-    - no, ignore
-    - no, skip
-    - not applicable
-    - no, don’t proceed
-    - never
-    - not this one
-    - no, leave it
-    - cancel that
+  - intent: deny
+    examples: |
+      - no
+      - nope
+      - don't confirm
+      - not interested
+      - absolutely not # Added for minimum examples
 
-- intent: ask_appointment
-  examples: |
-    - I want to book an appointment
-    - Book an appointment with [Dr. Smith](doctor_name) tomorrow
-    - Can I schedule a consultation?
-    - I need to see [Dr. John](doctor_name) next week
-    - Schedule a [cardiology](service) appointment
-    - Please book an appointment for [next Monday](appointment_date)
-    - Appointment at [10 AM](appointment_time)
-    - Book appointment for [Ramesh](patient_name)
-    - I want to see a [dentist](service)
-    - Schedule [orthopedics](service) consultation
-    - Appointment with [Dr. Brown](doctor_name)
-    - Can you book a checkup for [tomorrow](appointment_date)?
-    - I need a [cardiology](service) appointment
-    - Book me with [Dr. Smith](doctor_name) at [2 PM](appointment_time)
-    - Please schedule [pediatrics](service) appointment
-    - I want an appointment on [2025-10-10](appointment_date)
-    - Schedule consultation with [Dr. Adams](doctor_name)
-    - I need a [neurology](service) appointment
-    - Book appointment with [Dr. Lee](doctor_name)
-    - I want to see [Dr. Taylor](doctor_name)
-    - Can I schedule a [dermatology](service) appointment?
-    - Appointment for [Jane Doe](patient_name)
-    - Book [next Friday](appointment_date)
-    - Schedule a visit at [11 AM](appointment_time)
-    - Appointment for [cardiology](service)
-    - Can I see [Dr. John](doctor_name)?
-    - I want a checkup with [Dr. Smith](doctor_name)
-    - Book appointment with [Dr. Emily](doctor_name) tomorrow
-    - Schedule a [general checkup](service)
-    - Appointment at [3 PM](appointment_time)
-    - Book [next Wednesday](appointment_date)
-    - I want to see [Dr. Brown](doctor_name)
-    - Schedule appointment with [Dr. Green](doctor_name)
-    - Can I book a [neurology](service) consultation?
-    - Appointment for [Ramesh Kumar](patient_name)
-    - Book [10 AM](appointment_time) with [Dr. Adams](doctor_name)
-    - Schedule [cardiology](service) appointment tomorrow
-    - Appointment for [orthopedics](service)
-    - Book [Dr. John](doctor_name) at [5 PM](appointment_time)
-    - I want to see [Dr. Emily](doctor_name) next Monday
-    - Schedule [dentistry](service) appointment
-    - Appointment on [2025-11-01](appointment_date)
-    - Book me for [general checkup](service)
-    - I need to see [Dr. Taylor](doctor_name)
-    - Appointment at [1 PM](appointment_time)
-    - Schedule a consultation for [Jane Doe](patient_name)
-    - Book appointment with [Dr. Lee](doctor_name)
-    - I want an appointment for [cardiology](service)
-    - Can I see [Dr. Brown](doctor_name) at [10 AM](appointment_time)
-    - Schedule [neurology](service) visit
+  # FIX 1: Added inform intent and examples to clear 'inform is in domain but not NLU' warning
+  - intent: inform
+    examples: |
+      - The time is [October 20th at 10am]{"entity": "time"}.
+      - It's on [next Tuesday]{"entity": "time"}.
+      - [4 pm]{"entity": "time"} is when I booked it.
+      - I don't know the full details yet.
 
-- intent: inform
-  examples: |
-    - My name is [Ramesh Kumar](patient_name)
-    - I want to see [Dr. John](doctor_name)
-    - Appointment on [2025-10-05](appointment_date)
-    - Please set it for [11:00 AM](appointment_time)
-    - The service is [orthopedics](service)
-    - My phone number is [9876543210](phone_number)
-    - You can contact me at [ramesh@example.com](email)
-    - My phone number is [9123456789](phone_number)
-    - Call me at [9876543210](phone_number)
-    - My email is [ramesh@example.com](email)
-    - You can contact me at [test.user@domain.com](email)
-    - I am [John Doe](patient_name)
-    - I want to see [Dr. Smith](doctor_name)
-    - Appointment on [2025-10-15](appointment_date)
-    - Set it at [2 PM](appointment_time)
-    - The consultation is for [cardiology](service)
-    - My contact is [9998887777](phone_number)
-    - Email me at [john@example.com](email)
-    - My phone number is [9998887777](phone_number)
-    - Contact: [jane@example.com](email)
-    - Appointment for [Alice](patient_name)
-    - Book with [Dr. Adams](doctor_name)
-    - Set appointment on [2025-10-20](appointment_date)
-    - Time: [3 PM](appointment_time)
-    - Service required: [neurology](service)
-    - Call me at [8887776666](phone_number)
-    - Email: [alice@example.com](email)
-    - My name: [Bob Smith](patient_name)
-    - I want [Dr. Lee](doctor_name)
-    - Appointment on [2025-10-22](appointment_date)
-    - Set time [4 PM](appointment_time)
-    - Service: [dentistry](service)
-    - Contact number: [7776665555](phone_number)
-    - Email: [bob@example.com](email)
-    - My name is [Mary Jane](patient_name)
-    - Appointment for [Dr. Green](doctor_name)
-    - Date: [2025-10-25](appointment_date)
-    - Time: [1 PM](appointment_time)
-    - Service: [orthopedics](service)
-    - Phone: [6665554444](phone_number)
-    - Email contact: [mary@example.com](email)
-    - I am [Alice Johnson](patient_name)
-    - Appointment with [Dr. Taylor](doctor_name)
-    - Date: [2025-11-01](appointment_date)
-    - Time: [10 AM](appointment_time)
-    - Service: [cardiology](service)
-    - Phone number: [5554443333](phone_number)
-    - Email address: [alicej@example.com](email)
+  # Scenario 1: Proactive flow intent (used by external API)
+  # FIX 2: Added more examples for stable training and to clear "only 1 example" warning
+  - intent: external_new_slot
+    examples: |
+      - new slot available
+      - external new slot
+      - a new time has opened up
+      - slot notification
 
-- intent: ask_change
-  examples: |
-    - I want to change my appointment
-    - Can I reschedule?
-    - Please update the time
-    - Change doctor
-    - I want to update my booking
-    - Can I modify my appointment details?
-    - I need to reschedule
-    - Change my appointment date
-    - Update the doctor
-    - I want to change my time
-    - Can I change the doctor?
-    - Reschedule appointment
-    - Modify my appointment
-    - I need to change the booking
-    - Change appointment details
-    - Update my appointment
-    - I want a different time
-    - Please reschedule my appointment
-    - Can I change the appointment?
-    - Change booking
-    - Update doctor
-    - Change consultation time
-    - Modify appointment
-    - I want to change doctor
-    - Reschedule for a different date
-    - Update appointment details
-    - I need to change time
-    - Change appointment date
-    - I want a new appointment date
-    - Reschedule for another doctor
-    - Change the booking
-    - Update appointment time
-    - Modify the doctor
-    - Can I change the appointment time?
-    - Change my consultation
-    - I want to update details
-    - Change booking date
-    - Reschedule doctor
-    - Change the service
-    - Update time
-    - Change patient name
-    - Modify booking
-    - Change appointment info
-    - I want to reschedule appointment
-    - Change doctor name
-    - Change appointment schedule
-    - Update my booking
-    - Reschedule consultation
-    - Modify appointment time
+  # Scenario 2: Cancel Appointment
+  - intent: cancel_appointment
+    examples: |
+      - Cancel my appointment [day-after-tomorrow at 3 PM]{"entity": "time"}.
+      - I need to cancel my booking for [tomorrow at 5 PM]{"entity": "time"}.
+      - Please cancel my [3 PM]{"entity": "time"} appointment.
+      - Cancel my booking.
+      - Can I cancel my appointment on [next Monday]{"entity": "time"}.
 
-- intent: out_of_scope
-  examples: |
-    - What’s the weather like?
-    - Tell me a joke
-    - Who won the cricket match?
-    - Play some music
-    - Open Google
-    - Translate this for me
-    - How is the stock market?
-    - Turn on the lights
-    - What is AI?
-    - Play a song
-    - Find a restaurant
-    - Search for a hotel
-    - Open YouTube
-    - Tell me the news
-    - Who is the president?
-    - Set an alarm
-    - Convert dollars to rupees
-    - Show me a meme
-    - What time is it?
-    - Open browser
-    - Calculate 5 plus 7
-    - Give me a quote
-    - Tell me a story
-    - Search Google
-    - Play music
-    - Open calculator
-    - How tall is Mount Everest?
-    - Find nearby hospitals
-    - What’s the temperature?
-    - Show me a map
-    - Who won the football match?
-    - Tell me a riddle
-    - Open Gmail
-    - Show me a picture
-    - Translate this sentence
-    - Play a video
-    - What is the capital of India?
-    - Search for images
-    - Open Word
-    - Convert cm to inches
-    - What’s 10 plus 25?
-    - Tell me a fact
-    - Show me directions
-    - Open Maps
-    - Search Wikipedia
-    - Play a game
-    - Open settings
-    - Show nearby restaurants
+  # Scenario 3: Reschedule Appointment
+  - intent: reschedule_appointment
+    examples: |
+      - Reschedule my [today's appointment]{"entity": "time", "role": "current_time"} to [tomorrow at 6 PM]{"entity": "time", "role": "new_time"}.
+      - Change my [10 AM]{"entity": "time", "role": "current_time"} time to [3 PM]{"entity": "time", "role": "new_time"}.
+      - Can I move my appointment to [Friday]{"entity": "time", "role": "new_time"}?
+      - Reschedule my appointment.
+      - I want to move my [Monday]{"entity": "time", "role": "current_time"} appointment.

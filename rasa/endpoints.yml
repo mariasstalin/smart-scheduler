@@ -1,2 +1,15 @@
+# Rasa server endpoints configuration
+
 action_endpoint:
   url: "http://localhost:5055/webhook"
+
+# Uncomment below if you want to connect to a tracker store
+# tracker_store:
+#   type: sql
+#   dialect: "sqlite"  # change to postgres, mysql if needed
+#   db: "rasa.db"
+#   username: ""
+#   password: ""
+#   host: ""
+#   port: ""
+#   url: ""

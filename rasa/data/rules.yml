@@ -1,47 +1,63 @@
 version: "3.1"
 
 rules:
-  - rule: Activate appointment form
+  # Rule to activate the Reschedule Form
+  - rule: Activate reschedule form
     steps:
-      - intent: ask_appointment
-      - action: appointment_form
-      - active_loop: appointment_form
+      - intent: reschedule_appointment
+      - action: reschedule_form
+      - active_loop: reschedule_form
 
-  - rule: Submit appointment form
+  # Rule to submit the Reschedule Form
+  - rule: Submit reschedule form
     condition:
-      - active_loop: appointment_form
+      - active_loop: reschedule_form
     steps:
-      - action: appointment_form
+      - action: reschedule_form
       - active_loop: null
-      - action: action_submit_appointment
+      - slot_was_set:
+          - requested_slot: null
+      - action: action_reschedule_appointment
+      - action: action_listen
 
-  - rule: Greet
+  # Rule for Cancelling an appointment (standalone)
+  - rule: Activate cancel form
     steps:
-      - intent: greet
-      - action: utter_greet
+      - intent: cancel_appointment
+      - action: cancel_form
+      - active_loop: cancel_form
 
-  - rule: Goodbye
+  # Rule to submit the Cancel Form
+  - rule: Submit cancel form
+    condition:
+      - active_loop: cancel_form
     steps:
-      - intent: goodbye
-      - action: utter_goodbye
+      - action: cancel_form
+      - active_loop: null
+      - slot_was_set:
+          - requested_slot: null
+      - action: action_cancel_appointment
+      - action: action_listen
 
-  - rule: Out of scope
+  # --- INTERRUPT RULE (Handles the context switch) ---
+  - rule: Allow cancellation to interrupt reschedule form
+    condition:
+      - active_loop: reschedule_form
     steps:
-      - intent: out_of_scope
-      - action: utter_form_cancel
+      - intent: cancel_appointment
+      - action: validate_reschedule_form
+      - active_loop: null
+      - action: cancel_form
+      - active_loop: cancel_form
 
-  # Extra rules to silence warnings
-  - rule: User affirms
+  # Rule to handle Proactive Slot Confirmation
+  - rule: Handle proactive slot confirmation
+    condition:
+      - slot_was_set:
+          - temp_new_slot_datetime: _
     steps:
-      - intent: affirm
-      - action: utter_greet
-
-  - rule: User informs details
-    steps:
-      - intent: inform
-      - action: utter_greet
-
-  - rule: User asks for change
-    steps:
-      - intent: ask_change
-      - action: utter_form_cancel
+      - or:
+          - intent: affirm
+          - intent: deny
+      - action: action_handle_slot_confirmation
+      - action: action_listen

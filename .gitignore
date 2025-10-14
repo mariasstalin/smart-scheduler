@@ -2,7 +2,6 @@
 # Python / Rasa
 # -------------------------
 rasa/
-rasa-actions/
 __pycache__/
 *.pyc
 .venv/

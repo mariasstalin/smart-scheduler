@@ -17,6 +17,54 @@ services:
       retries: 5
     profiles: ["local", "prod"]
 
+
+  # -------------------------
+  # Rasa and NLP
+  # -------------------------
+  duckling:
+    image: rasa/duckling:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - TZ=Asia/Calcutta
+    command: ["duckling-example-exe"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
+      interval: 10s
+      retries: 5
+    profiles: ["local", "prod"]
+
+  rasa-actions:
+    build:
+      context: ./rasa/actions
+      dockerfile: Dockerfile
+    image: smart-scheduler-rasa-actions
+    ports:
+      - "5055:5055"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5055/ || exit 1"]
+      interval: 10s
+      retries: 5
+    profiles: ["prod"]
+
+  rasa:
+    image: rasa/rasa:3.6.21
+    volumes:
+      - ./rasa:/app
+    command: >
+      run --enable-api --cors '*' --model /app/models --debug --endpoints endpoints.yml
+    ports:
+      - "5005:5005"
+    depends_on:
+      - duckling
+      - rasa-actions
+      - mysql
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5005/ || exit 1"]
+      interval: 10s
+      retries: 5
+    profiles: ["prod"]
+
   redis:
     image: redis:7.0
     ports:
@@ -113,15 +161,6 @@ services:
     depends_on:
       - mysql
       - discovery
-    profiles: ["prod"]
-
-  ui:
-    build: ./ui
-    image: smart-scheduler-ui
-    ports:
-      - "3000:80"
-    depends_on:
-      - gateway
     profiles: ["prod"]
 
 volumes:
