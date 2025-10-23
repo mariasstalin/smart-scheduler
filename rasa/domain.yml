@@ -113,6 +113,12 @@ responses:
   - text: "What day and time would you like to reschedule your appointment to?"
   utter_ask_slot_confirmation:
   - text: "An earlier appointment is now open on {new_slot_datetime} (originally {old_appointment_datetime}). Would you like to switch to this new time?"
+    buttons:
+      - title: "✅ Yes, switch to new time"
+        payload: "/confirm_slot_offer"
+      - title: "❌ No, keep my original time"
+        payload: "/deny_slot_offer"
+
 forms:
   reschedule_form:
     required_slots:

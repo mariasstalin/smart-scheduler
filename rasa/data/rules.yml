@@ -36,24 +36,15 @@ rules:
   - action: action_set_slot_offer_details
   - action: utter_ask_slot_confirmation 
 
-- rule: Confirm Slot Offer
-  condition:
-  - active_loop: slot_offer_confirmation_form
+- rule: Confirm Slot Offer (Yes button)
   steps:
-  - or:
-    - intent: affirm
-    - intent: confirm_slot_offer
+  - intent: confirm_slot_offer
   - action: action_confirm_slot_offer
 
-- rule: Deny Slot Offer
-  condition:
-  - active_loop: slot_offer_confirmation_form
+- rule: Deny Slot Offer (No button)
   steps:
-  - or:
-    - intent: deny
-    - intent: deny_slot_offer
+  - intent: deny_slot_offer
   - action: action_deny_slot_offer
-
 
 # -----------------------------------------------------------
 # --- Appointment Reschedule Flow (Flow 1) ---
@@ -61,7 +52,7 @@ rules:
 - rule: Start reschedule form flow
   steps:
   - intent: reschedule_appointment
-  - action: action_list_appointments_with_buttons 
+  - action: action_list_appointments_with_buttons
   - action: reschedule_form
   - active_loop: reschedule_form
 

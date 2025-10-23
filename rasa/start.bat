@@ -8,7 +8,6 @@ REM ----------------------------------------
 REM Run Rasa Server
 REM ----------------------------------------
 rasa run --enable-api --cors "*" --debug --port 5005
-
 REM ----------------------------------------
 REM Keep window open after server stops
 REM ----------------------------------------
