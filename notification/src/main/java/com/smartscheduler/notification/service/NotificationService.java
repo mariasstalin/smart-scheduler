@@ -3,41 +3,55 @@ package com.smartscheduler.notification.service;
 import com.smartscheduler.common.entity.*;
 import com.smartscheduler.common.event.*;
 import com.smartscheduler.common.repository.*;
-import com.smartscheduler.notification.client.MessagingClient;
-import lombok.RequiredArgsConstructor;
+import com.smartscheduler.notification.client.messaging.MessagingClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.*;
-import java.time.temporal.TemporalAmount;
-import java.time.temporal.TemporalUnit;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.*;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class NotificationService {
 
-    private final WaitlistRepository waitlistRepository;
-    private final AppointmentRepository appointmentRepository;
-    private final NotificationRepository notificationRepository;
-    private final DoctorRepository doctorRepository;
-    private final PatientRepository patientRepository;
-    @Qualifier("${messaging.provider}")
-    private final MessagingClient messagingClient;
-    private final RabbitTemplate rabbitTemplate;
+    @Autowired
+    private WaitlistRepository waitlistRepository;
+
+    @Autowired
+    private AppointmentRepository appointmentRepository;
+
+    @Autowired
+    private NotificationRepository notificationRepository;
+
+    @Autowired
+    private DoctorRepository doctorRepository;
+
+    @Autowired
+    private PatientRepository patientRepository;
+
+    @Qualifier("${messaging.provider:TwilioClient}")
+    @Autowired
+    private MessagingClient messagingClient;
+
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+
+    @Autowired
+    private RasaService rasaService;
 
     // single-thread scheduling for sequencing notifications; pool size tuned to needs
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(8);
     private final ConcurrentMap<Long, ScheduledFuture<?>> timeoutTasks = new ConcurrentHashMap<>();
 
     // configuration: how long to wait for a reply
-    private static final long RESPONSE_WINDOW_MINUTES = 5;
+    private static final long RESPONSE_WINDOW_MINUTES = 1;
     private static final int MAX_CONSECUTIVE_MISSES = 3;
     private static final Duration OPT_OUT_DURATION = Duration.ofHours(24);
 
@@ -78,7 +92,7 @@ public class NotificationService {
         }
 
         // compute effective priority score: patient.getPriorityScore() minus penalty for consecutive misses
-        candidates.sort(Comparator.<Waitlist>comparingDouble(w -> effectivePriorityScore(w.getPatient()))
+        candidates.sort(Comparator.<Waitlist>comparingDouble(w -> w.getPatient().getPriorityScore())
                 .reversed()
                 .thenComparing(Waitlist::getCreatedAt));
 
@@ -115,13 +129,6 @@ public class NotificationService {
             }
         }
         return false;
-    }
-
-    private double effectivePriorityScore(Patient p) {
-        double base = p.getPriorityScore(); // 0..100
-        // Penalize consecutive misses (10 points per miss)
-        double penalty = p.getConsecutiveMisses() * 10.0;
-        return Math.max(0.0, base - penalty);
     }
 
     private void notifyWaitlistSequentially(Iterator<Waitlist> it, Doctor doctor, LocalDateTime slotStart, LocalDateTime slotEnd, SlotCancelledEvent event) {
@@ -174,13 +181,13 @@ public class NotificationService {
         wl.setNotified(true);
         waitlistRepository.save(wl);
 
-        // send message (Twilio wrapper). Twilio client expected to be robust/retry internally.
-        String humanSlot = slotStart.toString() + " (UTC)"; // in prod convert to patient's timezone for message
-        String msg = String.format("Slot available at %s. Reply YES to confirm. (notificationId:%d)", humanSlot, notification.getId());
         try {
+            ZonedDateTime zonedSlotStart = slotStart.atZone(ZoneOffset.UTC).withZoneSameInstant(patient.getTimeZoneId());
+            String msg = String.format("Slot available at %s. Reply YES to confirm. (notificationId:%d)", zonedSlotStart.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), notification.getId());
             messagingClient.sendMessage(patient.getPhone(), msg);
+            rasaService.sendSlotAndGetResponse(patient.getPhone(), slotStart, patient.getTimeZoneId());
         } catch (Exception ex) {
-            log.error("Failed to send Twilio message to patientId={}, skipping to next candidate", patient.getId(), ex);
+            log.error("Failed to send message to patientId={}, skipping to next candidate", patient.getId(), ex);
             notification.setStatus(Notification.Status.EXPIRED);
             notificationRepository.save(notification);
             // do not increment consecutiveMisses here (send failure is not patient fault)
@@ -258,13 +265,12 @@ public class NotificationService {
         patient.setTotalNotificationsSent(patient.getTotalNotificationsSent() + 1);
         patientRepository.save(patient);
 
-        String humanSlot = slotStart.toString() + " (UTC)";
-        String msg = String.format("Slot available at %s. Reply YES to confirm. (notificationId:%d)", humanSlot, notification.getId());
-
+        ZonedDateTime zonedSlotStart = slotStart.atZone(ZoneOffset.UTC).withZoneSameInstant(patient.getTimeZoneId());
+        String msg = "A new appointment slot is available on %s. Reply YES to confirm - your current appointment will be rescheduled, or NO to skip. This slot will be offered to the next patient in %d minutes.";
         try {
-            messagingClient.sendMessage(patient.getPhone(), msg);
+            messagingClient.sendMessage(patient.getPhone(), String.format(msg, zonedSlotStart.format(DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm")), RESPONSE_WINDOW_MINUTES));
         } catch (Exception ex) {
-            log.error("Failed to send Twilio message to patientId={}, skipping to next future appointment", patient.getId(), ex);
+            log.error("Failed to send message to patientId={}, skipping to next future appointment", patient.getId(), ex);
             notification.setStatus(Notification.Status.EXPIRED);
             notificationRepository.save(notification);
             notifyFutureSequentially(it, doctor, slotStart, slotEnd, event);

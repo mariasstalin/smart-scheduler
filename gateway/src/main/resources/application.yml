@@ -15,16 +15,16 @@ spring:
             - id: user
               uri: lb://user
               predicates:
-                - Path=/user/**
+                - Path=/api/v1/user/**
             - id: appointment
               uri: lb://appointment
               predicates:
-                - Path=/appointment/**
+                - Path=/api/v1/appointment/**
             - id: notification
               uri: lb://notification
               predicates:
-                - Path=/notification/**
+                - Path=/api/v1/notification/**
             - id: audit
               uri: lb://audit
               predicates:
-                - Path=/audit/**
+                - Path=/api/v1/audit/**

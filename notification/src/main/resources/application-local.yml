@@ -20,5 +20,5 @@ spring:
     port: 6379
 
 messaging:
-  provider: demo
+  provider: demoClient
   system-phone: 919988776655

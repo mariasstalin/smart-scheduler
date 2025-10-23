@@ -1,0 +1,11 @@
+Name,Email,Phone,Age,SeverityLevel,ChronicCondition,SpecialMedicalNeeds,HighNetWorth,HighProfile,FrequentVisitor,VisitCount,LastVisitDate,TotalNotificationsSent,TotalNotificationsResponded,ConsecutiveMisses,WaitingDays,PriorityScore,InactiveUntil,LastNotifiedAt,StaffNotes
+John Doe,[john@example.com](mailto:john@example.com),9999999999,45,5,TRUE,FALSE,TRUE,FALSE,TRUE,12,2025-10-01,5,5,0,2,90,,2025-10-22 09:00,Needs urgent follow-up
+Jane Smith,[jane@example.com](mailto:jane@example.com),8888888888,30,3,FALSE,TRUE,FALSE,TRUE,FALSE,8,2025-09-20,3,2,1,5,70,2025-10-23 09:00,2025-10-22 10:00,Check allergies
+Mike Lee,[mike@example.com](mailto:mike@example.com),7777777777,60,4,TRUE,TRUE,FALSE,FALSE,TRUE,15,2025-08-15,7,6,0,10,85,,2025-10-22 11:00,Chronic patient
+Alice Tan,[alice@example.com](mailto:alice@example.com),6666666666,50,2,FALSE,FALSE,TRUE,TRUE,FALSE,5,2025-09-10,2,1,2,1,60,2025-10-24 09:00,2025-10-22 08:00,Normal follow-up
+Bob Roy,[bob@example.com](mailto:bob@example.com),5555555555,35,5,TRUE,TRUE,TRUE,TRUE,TRUE,20,2025-07-25,10,10,0,15,95,,2025-10-22 12:00,VIP patient
+Charlie Kim,[charlie@example.com](mailto:charlie@example.com),4444444444,40,3,TRUE,FALSE,FALSE,FALSE,TRUE,7,2025-10-05,4,3,0,3,75,2025-10-23 10:00,2025-10-22 13:00,Requires routine checkup
+Diana Prince,[diana@example.com](mailto:diana@example.com),3333333333,28,2,FALSE,FALSE,FALSE,TRUE,TRUE,3,2025-09-15,1,1,0,1,55,,2025-10-22 14:00,New patient
+Edward Nygma,[edward@example.com](mailto:edward@example.com),2222222222,55,4,TRUE,TRUE,TRUE,FALSE,TRUE,18,2025-08-30,9,8,1,12,88,2025-10-23 11:00,2025-10-22 15:00,VIP chronic patient
+Fiona Gallagher,[fiona@example.com](mailto:fiona@example.com),1111111111,35,1,FALSE,FALSE,FALSE,FALSE,FALSE,2,2025-10-10,0,0,0,0,40,,2025-10-22 16:00,Routine checkup
+George Clooney,[george@example.com](mailto:george@example.com),1010101010,65,5,TRUE,TRUE,TRUE,TRUE,TRUE,25,2025-07-01,12,12,0,20,98,2025-10-23 12:00,2025-10-22 17:00,High profile VIP patient

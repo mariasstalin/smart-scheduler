@@ -1,91 +1,133 @@
-version: "3.1"
-
-# --- Intents ---
+version: '3.1'
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: true
 intents:
-  - greet
-  - goodbye
-  - affirm
-  - deny
-  - reschedule_appointment
-  - cancel_appointment
-  - inform
-  - external_new_slot # FIX 1: Added missing intent
-
-# --- Entities ---
+- greet
+- goodbye
+- bot_challenge
+- reschedule_appointment
+- cancel_appointment
+- provide_selection
+- affirm
+- deny
+- provide_datetime
+- EXTERNAL_SLOT_OFFER
+- confirm_slot_offer
+- deny_slot_offer
 entities:
-  - time
-
-# --- Slots (Bot Memory) ---
+- time
 slots:
-  temp_new_slot_datetime:
+  requested_slot:
     type: any
+    initial_value: null
+    influence_conversation: false
+    mappings: []
+  appointment_selection:
+    type: any
+    initial_value: null
+    influence_conversation: false
+    mappings: # <--- CRITICAL FIX APPLIED HERE
+    - type: from_intent
+      intent: provide_selection
+      value: "ignored" # This value is ignored; validation action extracts it from payload
+      conditions:
+      - active_loop: reschedule_form
+  appointment_id:
+    type: any
+    initial_value: null
+    influence_conversation: false
+    mappings: []
+  service:
+    type: any
+    initial_value: null
+    influence_conversation: false
+    mappings: []
+  datetime:
+    type: any
+    initial_value: null
     influence_conversation: false
     mappings:
-      - type: from_trigger_intent
-        intent: greet
-        value: "placeholder_value"
-
-  cancel_datetime:
-    type: text
+    - type: from_entity
+      entity: time
+  appointments_list:
+    type: any
+    initial_value: null
+    influence_conversation: false
+    mappings: []
+  suggested_slots:
+    type: any
+    initial_value: null
+    influence_conversation: false
+    mappings: []
+  new_slot_datetime:
+    type: any
+    initial_value: null
+    influence_conversation: false
+    mappings: []
+  old_appointment_id:
+    type: any
+    initial_value: null
+    influence_conversation: false
+    mappings: []
+  slot_offer_id:
+    type: any
+    initial_value: null
+    influence_conversation: false
+    mappings: []
+  slot_offer_confirmation:
+    type: bool
+    initial_value: null
     influence_conversation: true
     mappings:
-      - type: from_entity
-        entity: time
-        not_intent: reschedule_appointment
-
-  current_datetime:
-    type: text
-    influence_conversation: true
-    mappings:
-      - type: from_entity
-        entity: time
-
-  new_datetime:
-    type: text
-    influence_conversation: true
-    mappings:
-      - type: from_entity
-        entity: time
-
-
-# --- Forms ---
-forms:
-  cancel_form:
-    required_slots:
-      - cancel_datetime
-
-  reschedule_form:
-    required_slots:
-      - current_datetime
-      - new_datetime
-
-# --- Actions and Forms ---
-actions:
-  - action_handle_slot_confirmation
-  - action_cancel_appointment
-  - action_reschedule_appointment
-  - validate_cancel_form
-  - validate_reschedule_form
-
-# --- Responses (Templates) ---
+    - type: from_intent
+      intent: affirm
+      value: true
+    - type: from_intent
+      intent: confirm_slot_offer
+      value: true
+    - type: from_intent
+      intent: deny
+      value: false
+    - type: from_intent
+      intent: deny_slot_offer
+      value: false
+  old_appointment_datetime:
+    type: any
+    initial_value: null
+    influence_conversation: false
+    mappings: []
+  appointment_action_type:
+    type: any
+    initial_value: null
+    influence_conversation: false
+    mappings: []
 responses:
   utter_greet:
-    - text: "Hello! How can I help you with your appointments today?"
-
-  utter_goodbye: # FIX 2: Added missing utterance for story use
-    - text: "Goodbye! Feel free to reach out if you need anything else."
-
-  utter_confirm_new_slot: # FIX 2: Added missing utterance for story use
-    - text: "I see a new slot is available on {temp_new_slot_datetime}. Would you like to confirm this?"
-
-  utter_ask_cancel_datetime:
-    - text: "What is the date and time of the appointment you wish to cancel?"
-
-  utter_ask_current_datetime:
-    - text: "What is the date and time of the *original* appointment you want to reschedule?"
-
-  utter_ask_new_datetime:
-    - text: "What is the *new* date and time you would like to reschedule to?"
-
-  utter_default_confirmation_message:
-    - text: "Would you like to confirm the change to {temp_new_slot_datetime}?"
+  - text: "Hello! I'm your scheduling assistant. How can I help you today?"
+  utter_goodbye:
+  - text: "Goodbye! Let me know if you need anything else."
+  utter_iamabot:
+  - text: "I am a bot, powered by Rasa."
+  utter_ask_datetime:
+  - text: "What day and time would you like to reschedule your appointment to?"
+  utter_ask_slot_confirmation:
+  - text: "An earlier appointment is now open on {new_slot_datetime} (originally {old_appointment_datetime}). Would you like to switch to this new time?"
+forms:
+  reschedule_form:
+    required_slots:
+    - appointment_selection 
+    - datetime
+  slot_offer_confirmation_form:
+    required_slots:
+    - slot_offer_confirmation
+actions:
+- action_list_appointments_with_buttons
+- utter_goodbye
+- action_submit_reschedule_form
+- action_set_slot_offer_details
+- action_confirm_slot_offer
+- action_deny_slot_offer
+- action_cancel_appointment
+- validate_reschedule_form
+- validate_slot_offer_confirmation_form

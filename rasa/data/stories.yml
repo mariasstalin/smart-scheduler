@@ -1,58 +1,204 @@
 version: "3.1"
 
 stories:
-  - story: Greet and Goodbye
-    steps:
-      - intent: greet
-      - action: utter_greet
-      - intent: goodbye
-      - action: utter_goodbye
 
-  - story: Cancel appointment (Happy Path)
-    steps:
-      - intent: cancel_appointment
-      - action: cancel_form
-      - active_loop: cancel_form
-      - slot_was_set:
-          - cancel_datetime: "2025-12-01T10:00:00.000+00:00"
-      # Correct form submission events:
-      - active_loop: null
-      - action: action_cancel_appointment
-      - action: action_listen
+# --- Reschedule Happy Path ---
+- story: Reschedule appointment successfully
+  steps:
+    - intent: reschedule_appointment
+    - action: action_list_appointments_with_buttons
+    - action: reschedule_form
+    - active_loop: reschedule_form
+    - intent: provide_selection
+    - action: reschedule_form
+    - intent: provide_datetime
+    - action: reschedule_form
+    - active_loop: null
+    - action: action_submit_reschedule_form
+    - action: utter_goodbye
+    - action: action_listen
 
-  - story: Reschedule appointment (Happy Path)
-    steps:
-      - intent: reschedule_appointment
-      - action: reschedule_form
-      - active_loop: reschedule_form
-      - slot_was_set:
-          - current_datetime: "2025-11-20T14:00:00.000+00:00"
-          - new_datetime: "2025-12-05T16:00:00.000+00:00"
-      # Correct form submission events:
-      - active_loop: null
-      - action: action_reschedule_appointment
-      - action: action_listen
+# --- Reschedule with invalid datetime and retry ---
+- story: Reschedule with invalid time then valid time
+  steps:
+    - intent: reschedule_appointment
+    - action: action_list_appointments_with_buttons
+    - action: reschedule_form
+    - active_loop: reschedule_form
+    - intent: provide_selection
+    - action: reschedule_form
+    - intent: provide_datetime # Invalid time (sets suggested_slots)
+    - action: reschedule_form
+    - intent: provide_datetime # Valid time (or selection of a suggested slot)
+    - action: reschedule_form
+    - active_loop: null
+    - action: action_submit_reschedule_form
+    - action: utter_goodbye
+    - action: action_listen
 
-  # Story for the proactive notification flow - AFFIRM
-  - story: Proactive Notification Flow - Affirm
-    steps:
-      # Simulates external event to initiate the conversation
-      - slot_was_set:
-          - temp_new_slot_datetime: "2025-10-15T09:00:00.000+00:00"
-      - intent: external_new_slot
-      - action: utter_confirm_new_slot
-      - intent: affirm
-      - action: action_handle_slot_confirmation
-      - action: action_listen
+# --- Reschedule user abandons after selection ---
+- story: Reschedule but user says no to datetime
+  steps:
+    - intent: reschedule_appointment
+    - action: action_list_appointments_with_buttons
+    - action: reschedule_form
+    - active_loop: reschedule_form
+    - intent: provide_selection
+    - action: reschedule_form
+    - intent: deny
+    # Rule 'Abandon reschedule form on deny' handles the rest (form deactivation + utter_goodbye)
 
-  # Story for the proactive notification flow - DENY
-  - story: Proactive Notification Flow - Deny
-    steps:
-      # Simulates external event to initiate the conversation
-      - slot_was_set:
-          - temp_new_slot_datetime: "2025-10-15T09:00:00.000+00:00"
-      - intent: external_new_slot
-      - action: utter_confirm_new_slot
-      - intent: deny
-      - action: action_handle_slot_confirmation
-      - action: action_listen
+# --- Cancel Appointment Flow ---
+- story: Cancel appointment successfully
+  steps:
+    - intent: cancel_appointment
+    - action: action_list_appointments_with_buttons
+    - intent: provide_selection
+    - action: action_cancel_appointment
+    - action: action_listen
+
+
+# --- External Slot Offer - User Confirms ---
+- story: External slot offer - user confirms
+  steps:
+    - intent: EXTERNAL_SLOT_OFFER
+    - action: action_set_slot_offer_details
+    - action: utter_ask_slot_confirmation
+    - active_loop: slot_offer_confirmation_form
+    - intent: affirm
+    - action: action_confirm_slot_offer
+    - active_loop: null
+
+# --- External Slot Offer - User Denies ---
+- story: External slot offer - user denies
+  steps:
+    - intent: EXTERNAL_SLOT_OFFER
+    - action: action_set_slot_offer_details
+    - action: utter_ask_slot_confirmation
+    - active_loop: slot_offer_confirmation_form
+    - intent: deny
+    - action: action_deny_slot_offer
+    - active_loop: null
+
+# --- Basic Interactions ---
+- story: simple greeting
+  steps:
+    - intent: greet
+    - action: utter_greet
+
+- story: user says goodbye
+  steps:
+    - intent: goodbye
+    - action: utter_goodbye
+
+- story: bot challenge
+  steps:
+    - intent: bot_challenge
+    - action: utter_iamabot
+
+# --- Greeting then reschedule ---
+- story: Greet then reschedule
+  steps:
+    - intent: greet
+    - action: utter_greet
+    - intent: reschedule_appointment
+    - action: action_list_appointments_with_buttons
+    - action: reschedule_form
+    - active_loop: reschedule_form
+    - intent: provide_selection
+    - action: reschedule_form
+    - intent: provide_datetime
+    - action: reschedule_form
+    - active_loop: null
+    - action: action_submit_reschedule_form
+    - action: utter_goodbye
+    - action: action_listen
+
+# --- Greeting then cancel ---
+- story: Greet then cancel
+  steps:
+    - intent: greet
+    - action: utter_greet
+    - intent: cancel_appointment
+    - action: action_list_appointments_with_buttons
+    - intent: provide_selection
+    - action: action_cancel_appointment
+    - action: action_listen
+    
+# --- Interactive Story 1 (Selection only) ---
+- story: interactive_story_1
+  steps:
+  - intent: reschedule_appointment
+  - action: action_list_appointments_with_buttons
+  - slot_was_set:
+    - appointments_list:
+      - appointment_id: A123
+        service: Dental Cleaning
+        doctor: Dr. Smith
+        current_time: 2025-10-25 15:00
+      - appointment_id: B234
+        service: Consultation
+        doctor: Dr. John
+        current_time: 2025-10-26 14:00
+  - slot_was_set:
+    - appointment_action_type: reschedule
+  - action: reschedule_form
+  - active_loop: reschedule_form
+  - slot_was_set:
+    - requested_slot: appointment_selection
+  - intent: provide_selection
+  - action: reschedule_form
+  - slot_was_set:
+    - appointment_selection: '1'
+  - slot_was_set:
+    - appointment_id: A123
+  - slot_was_set:
+    - service: Dental Cleaning
+  - slot_was_set:
+    - requested_slot: datetime
+
+# --- Interactive Story 2 (Full reschedule flow) ---
+- story: interactive_story_2
+  steps:
+  - intent: reschedule_appointment
+  - action: action_list_appointments_with_buttons
+  - slot_was_set:
+    - appointments_list:
+      - appointment_id: A123
+        service: Dental Cleaning
+        doctor: Dr. Smith
+        current_time: 2025-10-25 15:00
+      - appointment_id: B234
+        service: Consultation
+        doctor: Dr. John
+        current_time: 2025-10-26 14:00
+  - slot_was_set:
+    - appointment_action_type: reschedule
+  - action: reschedule_form
+  - active_loop: reschedule_form
+  - slot_was_set:
+    - requested_slot: appointment_selection
+  - intent: provide_selection
+  - action: reschedule_form
+  - slot_was_set:
+    - appointment_selection: '1'
+  - slot_was_set:
+    - appointment_id: A123
+  - slot_was_set:
+    - service: Dental Cleaning
+  - slot_was_set:
+    - requested_slot: datetime
+  - intent: provide_datetime
+    entities:
+    - time: '2025-10-23T15:00:00.000-07:00'
+  - action: reschedule_form
+  - slot_was_set:
+    - datetime: 2025-10-23 15:00
+  - slot_was_set:
+    - suggested_slots: null
+  - slot_was_set:
+    - requested_slot: null
+  - active_loop: null
+  - action: action_submit_reschedule_form
+  - action: utter_goodbye
+  - action: action_listen

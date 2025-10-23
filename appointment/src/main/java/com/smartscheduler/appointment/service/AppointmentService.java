@@ -105,7 +105,7 @@ public class AppointmentService {
                 .build();
         slotCancellationRepository.save(sc);
 
-        SlotCancelledEvent slotCancelledEvent = new SlotCancelledEvent(appointment.getId(), appointment.getDoctor().getId(), appointment.getStartTime(), appointment.getEndTime(), appointment.getPatient().getTimeZoneId());
+        SlotCancelledEvent slotCancelledEvent = new SlotCancelledEvent(appointment.getId(), appointment.getDoctor().getId(), appointment.getStartTime(), appointment.getEndTime());
         rabbitTemplate.convertAndSend("appointments.exchange", "appointments.cancelled", slotCancelledEvent);
 
         log.info("Appointment cancelled and SlotCancelledEvent published: {}", appointment.getId());
@@ -167,7 +167,7 @@ public class AppointmentService {
 
         // Publish freed old slot event (so NotificationService can continue chain)
         if (oldAppointment != null) {
-            SlotCancelledEvent SlotCancelledEvent = new SlotCancelledEvent(oldAppointment.getId(), doctor.getId(), oldAppointment.getStartTime(), oldAppointment.getEndTime(), oldAppointment.getPatient().getTimeZoneId());
+            SlotCancelledEvent SlotCancelledEvent = new SlotCancelledEvent(oldAppointment.getId(), doctor.getId(), oldAppointment.getStartTime(), oldAppointment.getEndTime());
             rabbitTemplate.convertAndSend("appointments.exchange", "appointments.rescheduled", SlotCancelledEvent);
         }
 

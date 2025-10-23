@@ -1,67 +1,145 @@
 version: "3.1"
-
 nlu:
-  - intent: greet
-    examples: |
-      - hi
-      - hello there
-      - good morning
-      - good day # Added for minimum examples
-
-  - intent: goodbye
-    examples: |
-      - bye
-      - gotta go
-      - see you later
-      - talk to you soon # Added for minimum examples
-
-  - intent: affirm
-    examples: |
-      - yes
-      - yep
-      - sure
-      - confirm it
-      - that's right # Added for minimum examples
-
-  - intent: deny
-    examples: |
-      - no
-      - nope
-      - don't confirm
-      - not interested
-      - absolutely not # Added for minimum examples
-
-  # FIX 1: Added inform intent and examples to clear 'inform is in domain but not NLU' warning
-  - intent: inform
-    examples: |
-      - The time is [October 20th at 10am]{"entity": "time"}.
-      - It's on [next Tuesday]{"entity": "time"}.
-      - [4 pm]{"entity": "time"} is when I booked it.
-      - I don't know the full details yet.
-
-  # Scenario 1: Proactive flow intent (used by external API)
-  # FIX 2: Added more examples for stable training and to clear "only 1 example" warning
-  - intent: external_new_slot
-    examples: |
-      - new slot available
-      - external new slot
-      - a new time has opened up
-      - slot notification
-
-  # Scenario 2: Cancel Appointment
-  - intent: cancel_appointment
-    examples: |
-      - Cancel my appointment [day-after-tomorrow at 3 PM]{"entity": "time"}.
-      - I need to cancel my booking for [tomorrow at 5 PM]{"entity": "time"}.
-      - Please cancel my [3 PM]{"entity": "time"} appointment.
-      - Cancel my booking.
-      - Can I cancel my appointment on [next Monday]{"entity": "time"}.
-
-  # Scenario 3: Reschedule Appointment
-  - intent: reschedule_appointment
-    examples: |
-      - Reschedule my [today's appointment]{"entity": "time", "role": "current_time"} to [tomorrow at 6 PM]{"entity": "time", "role": "new_time"}.
-      - Change my [10 AM]{"entity": "time", "role": "current_time"} time to [3 PM]{"entity": "time", "role": "new_time"}.
-      - Can I move my appointment to [Friday]{"entity": "time", "role": "new_time"}?
-      - Reschedule my appointment.
-      - I want to move my [Monday]{"entity": "time", "role": "current_time"} appointment.
+- intent: greet
+  examples: |
+    - hi
+    - hello
+    - hey there
+    - good morning
+    - good afternoon
+    - hey
+    - hi there
+    - greetings
+- intent: reschedule_appointment
+  examples: |
+    - I want to reschedule my appointment
+    - change my booking
+    - move my meeting to another date
+    - reschedule appointment please
+    - I need to change my appointment
+    - can I reschedule
+    - need to move my appointment
+    - shift my appointment
+    - change appointment time
+    - move my booking
+    - I'd like to reschedule
+    - can we change the time
+    - I need a different time
+    - modify my appointment
+    - update my booking
+    - I need to reschedule an appointment
+- intent: cancel_appointment
+  examples: |
+    - I need to cancel my appointment
+    - cancel my booking
+    - please cancel the 3pm appointment
+    - I can't make it
+    - cancel appointment
+    - I want to cancel
+    - remove my booking
+    - delete my appointment
+    - I need to cancel
+    - cancel it please
+    - I won't be able to make it
+    - need to cancel my appointment
+- intent: provide_selection
+  examples: |
+    - 1
+    - 2
+    - 3
+    - the 3pm one
+    - ID A101
+    - first one
+    - second one
+    - number 1
+    - option 2
+    - the first appointment
+    - A123
+    - B234
+    - appointment 1
+    - the second option
+    - 4
+- intent: provide_datetime
+  examples: |
+    - tomorrow at 5pm
+    - next monday 10am
+    - 22nd October at 3pm
+    - next Friday at 4 pm
+    - tomorrow at 3pm
+    - wednesday at 2pm
+    - next week at 11am
+    - 25th at 4pm
+    - October 30th at 2pm
+    - 5pm tomorrow
+    - monday morning
+    - next tuesday afternoon
+    - 10am on the 24th
+    - I want to move it to October 23rd at 3pm
+- intent: goodbye
+  examples: |
+    - bye
+    - cya
+    - good bye
+    - talk to you later
+    - see you
+    - goodbye
+    - see ya
+    - catch you later
+    - bye bye
+- intent: bot_challenge
+  examples: |
+    - are you a bot
+    - are you a human
+    - what are you
+    - I am talking to a bot
+    - are you real
+    - who am I talking to
+- intent: affirm
+  examples: |
+    - yes
+    - sure
+    - sounds good
+    - correct
+    - definitely
+    - yes please
+    - yep
+    - yeah
+    - ok
+    - okay
+    - affirmative
+    - that's right
+    - indeed
+    - absolutely
+    - Yes, I want the slot
+- intent: deny
+  examples: |
+    - no
+    - nope
+    - absolutely not
+    - nevermind
+    - wrong
+    - not really
+    - negative
+    - I don't think so
+    - never mind
+    - no way
+    - not interested
+- intent: EXTERNAL_SLOT_OFFER
+  examples: |
+    - /EXTERNAL_SLOT_OFFER
+    - /SLOT_OFFER_TRIGGER
+- intent: confirm_slot_offer
+  examples: |
+    - confirm the offer
+    - I will take that time
+    - yes to the new slot
+    - accept the new time
+    - I'll take it
+- intent: deny_slot_offer
+  examples: |
+    - deny the offer
+    - I don't want that time
+    - no to the new slot
+    - reject the slot
+    - keep my current appointment
+    - no thanks # This remains the only location for "no thanks."

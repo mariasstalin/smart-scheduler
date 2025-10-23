@@ -12,64 +12,18 @@ services:
     volumes:
       - ./db/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
+      # Checks if the MySQL server is accepting connections
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
       interval: 10s
       retries: 5
     profiles: ["local", "prod"]
-
-
-  # -------------------------
-  # Rasa and NLP
-  # -------------------------
-  duckling:
-    image: rasa/duckling:latest
-    ports:
-      - "8000:8000"
-    environment:
-      - TZ=Asia/Calcutta
-    command: ["duckling-example-exe"]
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
-      interval: 10s
-      retries: 5
-    profiles: ["local", "prod"]
-
-  rasa-actions:
-    build:
-      context: ./rasa/actions
-      dockerfile: Dockerfile
-    image: smart-scheduler-rasa-actions
-    ports:
-      - "5055:5055"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:5055/ || exit 1"]
-      interval: 10s
-      retries: 5
-    profiles: ["prod"]
-
-  rasa:
-    image: rasa/rasa:3.6.21
-    volumes:
-      - ./rasa:/app
-    command: >
-      run --enable-api --cors '*' --model /app/models --debug --endpoints endpoints.yml
-    ports:
-      - "5005:5005"
-    depends_on:
-      - duckling
-      - rasa-actions
-      - mysql
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:5005/ || exit 1"]
-      interval: 10s
-      retries: 5
-    profiles: ["prod"]
 
   redis:
     image: redis:7.0
     ports:
       - "6379:6379"
     healthcheck:
+      # Checks if Redis is responding to the PING command
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       retries: 5
@@ -86,7 +40,59 @@ services:
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     healthcheck:
+      # Checks if RabbitMQ is running and accepting connections
       test: ["CMD-SHELL", "rabbitmqctl status || exit 1"]
+      interval: 10s
+      retries: 5
+    profiles: ["local", "prod"]
+
+  # -------------------------
+  # Rasa and NLP Services
+  # -------------------------
+  duckling:
+    image: rasa/duckling:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - TZ=Asia/Calcutta
+    command: ["duckling-example-exe"]
+    healthcheck:
+      # REVERTED TO CURL: Assumed pre-installed in official images.
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
+      interval: 10s
+      retries: 5
+    profiles: ["local", "prod"]
+
+  rasa-actions:
+    build:
+      context: ./rasa/actions
+      dockerfile: Dockerfile
+    image: smart-scheduler-rasa-actions
+    ports:
+      - "5055:5055"
+    healthcheck:
+      # REVERTED TO CURL: Assumed pre-installed in official images.
+      test: ["CMD-SHELL", "curl -f http://localhost:5055/ || exit 1"]
+      interval: 10s
+      retries: 5
+    profiles: ["local", "prod"]
+
+  rasa:
+    image: rasa/rasa:3.6.21
+    volumes:
+      - ./rasa:/app
+    command: >
+      run --enable-api --cors '*' --model /app/models --debug --endpoints endpoints.yml
+    ports:
+      - "5005:5005"
+    depends_on:
+      # Wait for dependencies to start before running Rasa
+      - duckling
+      - rasa-actions
+      - mysql
+    healthcheck:
+      # REVERTED TO CURL: Assumed pre-installed in official images.
+      test: ["CMD-SHELL", "curl -f http://localhost:5005/ || exit 1"]
       interval: 10s
       retries: 5
     profiles: ["local", "prod"]
@@ -95,73 +101,161 @@ services:
   # Spring Boot Microservices
   # -------------------------
   discovery:
-    build: ./discovery
+    build:
+      context: .
+      dockerfile: discovery/Dockerfile
     image: smart-scheduler-discovery
     ports:
       - "8761:8761"
-    profiles: ["prod"]
+    profiles: ["local", "prod"]
+    healthcheck:
+      # Check using wget as curl may be missing from alpine base image
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8761/eureka/apps || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
 
   config:
-    build: ./config
+    build:
+      context: .
+      dockerfile: config/Dockerfile
     image: smart-scheduler-config
     ports:
       - "8888:8888"
     depends_on:
-      - discovery
-    profiles: ["prod"]
+      # CRITICAL: Waits until Discovery is 100% healthy
+      discovery:
+        condition: service_healthy
+    profiles: ["local", "prod"]
+    healthcheck:
+      # Checks the Spring Boot Actuator health endpoint
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8888/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 45s
 
   gateway:
-    build: ./gateway
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
     image: smart-scheduler-gateway
     ports:
       - "8080:8080"
     depends_on:
-      - discovery
-      - config
-    profiles: ["prod"]
+      # CRITICAL: Waits until Discovery is healthy
+      discovery:
+        condition: service_healthy
+      # CRITICAL: Now waits until Config is healthy
+      config:
+        condition: service_healthy
+    profiles: ["local", "prod"]
+    healthcheck:
+      # Checks the Spring Boot Actuator health endpoint
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 45s
 
   user:
-    build: ./user
+    build:
+      context: .
+      dockerfile: user/Dockerfile
     image: smart-scheduler-user
     ports:
       - "8081:8081"
     depends_on:
-      - mysql
-      - discovery
+      mysql:
+        condition: service_healthy
+      discovery:
+        condition: service_healthy
+      config:
+        condition: service_healthy
     profiles: ["prod"]
+    healthcheck:
+      # Checks the Spring Boot Actuator health endpoint
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 45s
 
   appointment:
-    build: ./appointment
+    build:
+      context: .
+      dockerfile: appointment/Dockerfile
     image: smart-scheduler-appointment
     ports:
       - "8082:8082"
     depends_on:
-      - mysql
-      - rabbitmq
-      - discovery
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      discovery:
+        condition: service_healthy
+      config:
+        condition: service_healthy
     profiles: ["prod"]
+    healthcheck:
+      # Checks the Spring Boot Actuator health endpoint
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 45s
 
   notification:
-    build: ./notification
+    build:
+      context: .
+      dockerfile: notification/Dockerfile
     image: smart-scheduler-notification
     ports:
       - "8083:8083"
     depends_on:
-      - mysql
-      - redis
-      - rabbitmq
-      - discovery
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      discovery:
+        condition: service_healthy
+      config:
+        condition: service_healthy
     profiles: ["prod"]
+    healthcheck:
+      # Checks the Spring Boot Actuator health endpoint
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8083/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 45s
 
   audit:
-    build: ./audit
+    build:
+      context: .
+      dockerfile: audit/Dockerfile
     image: smart-scheduler-audit
     ports:
       - "8084:8084"
     depends_on:
-      - mysql
-      - discovery
+      mysql:
+        condition: service_healthy
+      discovery:
+        condition: service_healthy
+      config:
+        condition: service_healthy
     profiles: ["prod"]
+    healthcheck:
+      # Checks the Spring Boot Actuator health endpoint
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8084/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 45s
 
 volumes:
   rabbitmq-data:

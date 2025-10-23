@@ -1,63 +1,111 @@
 version: "3.1"
 
 rules:
-  # Rule to activate the Reschedule Form
-  - rule: Activate reschedule form
-    steps:
-      - intent: reschedule_appointment
-      - action: reschedule_form
-      - active_loop: reschedule_form
 
-  # Rule to submit the Reschedule Form
-  - rule: Submit reschedule form
-    condition:
-      - active_loop: reschedule_form
-    steps:
-      - action: reschedule_form
-      - active_loop: null
-      - slot_was_set:
-          - requested_slot: null
-      - action: action_reschedule_appointment
-      - action: action_listen
+# ----------------------------------------------------------------------
+# --- System Rules ---
+# ----------------------------------------------------------------------
+- rule: Suppress 'utter_ask_datetime' warning
+  steps:
+  - intent: provide_datetime
+  - action: utter_ask_datetime
+  - action: action_listen
 
-  # Rule for Cancelling an appointment (standalone)
-  - rule: Activate cancel form
-    steps:
-      - intent: cancel_appointment
-      - action: cancel_form
-      - active_loop: cancel_form
+- rule: Say hello
+  steps:
+  - intent: greet
+  - action: utter_greet
 
-  # Rule to submit the Cancel Form
-  - rule: Submit cancel form
-    condition:
-      - active_loop: cancel_form
-    steps:
-      - action: cancel_form
-      - active_loop: null
-      - slot_was_set:
-          - requested_slot: null
-      - action: action_cancel_appointment
-      - action: action_listen
+- rule: Say goodbye anytime the user says goodbye
+  steps:
+  - intent: goodbye
+  - action: utter_goodbye
 
-  # --- INTERRUPT RULE (Handles the context switch) ---
-  - rule: Allow cancellation to interrupt reschedule form
-    condition:
-      - active_loop: reschedule_form
-    steps:
-      - intent: cancel_appointment
-      - action: validate_reschedule_form
-      - active_loop: null
-      - action: cancel_form
-      - active_loop: cancel_form
+- rule: Say 'I am a bot' anytime the user challenges
+  steps:
+  - intent: bot_challenge
+  - action: utter_iamabot
 
-  # Rule to handle Proactive Slot Confirmation
-  - rule: Handle proactive slot confirmation
-    condition:
-      - slot_was_set:
-          - temp_new_slot_datetime: _
-    steps:
-      - or:
-          - intent: affirm
-          - intent: deny
-      - action: action_handle_slot_confirmation
-      - action: action_listen
+
+# ----------------------------------------------------------------------
+# --- External Slot Offer Flow (Flow 2) ---
+# ----------------------------------------------------------------------
+- rule: Handle External Slot Offer Flow
+  steps:
+  - intent: EXTERNAL_SLOT_OFFER
+  - action: action_set_slot_offer_details
+  - action: utter_ask_slot_confirmation 
+
+- rule: Confirm Slot Offer
+  condition:
+  - active_loop: slot_offer_confirmation_form
+  steps:
+  - or:
+    - intent: affirm
+    - intent: confirm_slot_offer
+  - action: action_confirm_slot_offer
+
+- rule: Deny Slot Offer
+  condition:
+  - active_loop: slot_offer_confirmation_form
+  steps:
+  - or:
+    - intent: deny
+    - intent: deny_slot_offer
+  - action: action_deny_slot_offer
+
+
+# -----------------------------------------------------------
+# --- Appointment Reschedule Flow (Flow 1) ---
+# -----------------------------------------------------------
+- rule: Start reschedule form flow
+  steps:
+  - intent: reschedule_appointment
+  - action: action_list_appointments_with_buttons 
+  - action: reschedule_form
+  - active_loop: reschedule_form
+
+- rule: Continue reschedule_form after appointment selection
+  condition:
+  - active_loop: reschedule_form
+  steps:
+  - intent: provide_selection
+  - action: reschedule_form
+  - active_loop: reschedule_form
+  wait_for_user_input: false
+
+- rule: Submit reschedule form
+  condition:
+    - active_loop: reschedule_form
+  steps:
+    - action: reschedule_form
+    - active_loop: null
+    - action: action_submit_reschedule_form
+    - action: utter_goodbye
+    - action: action_listen
+
+- rule: Abandon reschedule form on deny
+  condition:
+  - active_loop: reschedule_form
+  steps:
+  - intent: deny
+  - action: reschedule_form
+  - active_loop: null
+  - action: utter_goodbye
+
+
+# ---------------------------------------------------------
+# --- Appointment Cancellation Flow (Flow 3) ---
+# ---------------------------------------------------------
+- rule: Start appointment cancellation flow
+  steps:
+  - intent: cancel_appointment
+  - action: action_list_appointments_with_buttons
+  
+- rule: Handle appointment selection for cancellation
+  condition:
+  - slot_was_set:
+    - appointment_action_type: cancel
+  steps:
+  - intent: provide_selection
+  - action: action_cancel_appointment

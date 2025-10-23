@@ -6,10 +6,16 @@ WORKDIR /app
 
 # Copy actions and dependency list
 COPY . /app
-
-# Install additional dependencies
 COPY ./requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# Switch to root temporarily to install Python dependencies
+USER root
+
+# Upgrade pip and install dependencies inside the virtual environment
+RUN /opt/venv/bin/pip install --upgrade pip && /opt/venv/bin/pip install --no-cache-dir -r /app/requirements.txt
+
+# Switch back to the 'rasa' user (default for Rasa SDK)
+USER 1001
 
 # Expose Rasa action server port
 EXPOSE 5055
