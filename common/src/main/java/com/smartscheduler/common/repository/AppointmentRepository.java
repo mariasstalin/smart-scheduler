@@ -20,5 +20,16 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     List<Appointment> findConflictingAppointments(@Param("doctorId") Long doctorId, @Param("start") Instant start, @Param("end") Instant end, @Param("status") Appointment.Status status);
 
     Optional<Appointment> findByZohoId(String bookingId);
+
+    @Query("SELECT a FROM Appointment a JOIN a.patient p WHERE p.phone = :phone AND a.status = :status")
+    List<Appointment> findByPatientPhoneAndStatus(@Param("phone") String phone, @Param("status") Appointment.Status status);
+
+    @Query("SELECT a FROM Appointment a WHERE a.doctor.id = :doctorId AND a.status = :status AND (" +
+            " (a.startTime < :newEndTime AND a.endTime > :newStartTime) " + // Overlap condition
+            ")")
+    List<Appointment> findConflictingAppointmentsByDoctorId(@Param("doctorId") Long doctorId,
+                                                            @Param("newStartTime") Instant newStartTime,
+                                                            @Param("newEndTime") Instant newEndTime,
+                                                            @Param("status") Appointment.Status status);
 }
 

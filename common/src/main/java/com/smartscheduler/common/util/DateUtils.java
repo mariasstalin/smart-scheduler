@@ -2,8 +2,15 @@ package com.smartscheduler.common.util;
 
 import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 
 public final class DateUtils {
+
+    private static final DateTimeFormatter RASA_DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+    private static final DateTimeFormatter ISO_DATE_TIME_FORMATTER = DateTimeFormatter.ISO_INSTANT.withZone(ZoneId.of("UTC"));
+
+    private static final ZoneId DEFAULT_API_ZONE = ZoneId.of("UTC");
 
     private DateUtils() {
         // Utility class
@@ -41,7 +48,7 @@ public final class DateUtils {
         return LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
     }
 
-    public static Instant toInstantDate(String dateStr, ZoneId zoneId) {
+    public static Instant toInstantDate(String dateStr, String pattern, ZoneId zoneId) {
         LocalDate localDate = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("dd-MMM-yyyy"));
         return localDate.atStartOfDay(zoneId).toInstant();
     }
@@ -52,6 +59,33 @@ public final class DateUtils {
             return Instant.parse(isoTime.replace("+00:00", "Z"));
         } catch (Exception e) {
             throw new RuntimeException("Cannot parse date: " + isoTime, e);
+        }
+    }
+
+    public static Instant parseDateTime(String dateTimeString) {
+        if (dateTimeString == null || dateTimeString.isBlank()) {
+            throw new IllegalArgumentException("Date time string cannot be null or empty.");
+        }
+        try {
+            LocalDateTime ldt = LocalDateTime.parse(dateTimeString, RASA_DATE_TIME_FORMATTER);
+            ZonedDateTime zdt = ldt.atZone(DEFAULT_API_ZONE);
+            return zdt.toInstant();
+        } catch (DateTimeParseException e) {
+            //log.error("Failed to parse date string: {} using format {}", dateTimeString, RASA_DATE_TIME_FORMATTER.toString(), e);
+            throw new IllegalArgumentException("Invalid date format. Expected YYYY-MM-DD HH:MM.", e);
+        }
+    }
+
+    public static Instant toInstantDate(String dateStr, ZoneId zoneId) {
+        if (dateStr == null || dateStr.isBlank()) {
+            return null;
+        }
+        try {
+            LocalDate localDate = LocalDate.parse(dateStr, DateTimeFormatter.ISO_DATE);
+            return localDate.atStartOfDay(zoneId).toInstant();
+        } catch (DateTimeParseException e) {
+            //log.error("Failed to parse date string: {} with zone {}", dateStr, zoneId, e);
+            throw new IllegalArgumentException("Invalid date format.", e);
         }
     }
 

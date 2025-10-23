@@ -1,5 +1,7 @@
 package com.smartscheduler.appointment.service;
 
+import com.smartscheduler.appointment.exception.AppointmentNotFoundException;
+import com.smartscheduler.appointment.exception.SlotUnavailableException;
 import com.smartscheduler.appointment.payload.BookAppointmentPayload;
 import com.smartscheduler.appointment.payload.CancelAppointmentPayload;
 import com.smartscheduler.common.entity.*;
@@ -201,6 +203,132 @@ public class AppointmentService {
                         .phone(phone)
                         .createdAt(Instant.now())
                         .build()));
+    }
+
+
+
+    public List<Appointment> getAppointmentsByPhoneNumber(String phoneNumber) {
+        return appointmentRepository.findByPatientPhoneAndStatus(phoneNumber, Appointment.Status.UPCOMING);
+    }
+
+    public Appointment findById(String appointmentId) {
+        try {
+            Long id = Long.valueOf(appointmentId);
+            return appointmentRepository.findById(id)
+                    .orElseThrow(() -> new AppointmentNotFoundException(appointmentId));
+        } catch (NumberFormatException e) {
+            throw new AppointmentNotFoundException(appointmentId);
+        }
+    }
+
+    @Transactional
+    public Appointment reschedule(String oldAppointmentId, String newDatetimeString) {
+        Long oldId;
+        try {
+            oldId = Long.valueOf(oldAppointmentId);
+        } catch (NumberFormatException e) {
+            throw new AppointmentNotFoundException(oldAppointmentId);
+        }
+
+        Appointment oldAppointment = appointmentRepository.findById(oldId)
+                .orElseThrow(() -> new AppointmentNotFoundException(oldAppointmentId));
+
+        // 1. Calculate new slot timing (assuming fixed duration from constant)
+        Instant newStartTime = DateUtils.parseDateTime(newDatetimeString);
+        Instant newEndTime = newStartTime.plus(Duration.between(oldAppointment.getStartTime(), oldAppointment.getEndTime()));
+        Long doctorId = oldAppointment.getDoctor().getId();
+        Long patientId = oldAppointment.getPatient().getId();
+
+        // 2. Check conflicts
+        List<Appointment> conflicts = appointmentRepository.findConflictingAppointmentsByDoctorId(
+                doctorId, newStartTime, newEndTime, Appointment.Status.UPCOMING);
+
+        if (!conflicts.isEmpty()) {
+            log.warn("Conflict found during Rasa reschedule for doctor {} on {}", doctorId, newDatetimeString);
+            throw new SlotUnavailableException(newDatetimeString); // Maps to HTTP 409
+        }
+
+        // 3. Update old appointment status (RESCHEDULED)
+        oldAppointment.setStatus(Appointment.Status.RESCHEDULED);
+        oldAppointment.setUpdatedAt(Instant.now());
+        appointmentRepository.save(oldAppointment);
+
+        // 4. Create new appointment
+        Appointment newAppointment = Appointment.builder()
+                .zohoId(null)
+                .doctor(oldAppointment.getDoctor())
+                .patient(oldAppointment.getPatient())
+                .startTime(newStartTime)
+                .endTime(newEndTime)
+                .status(Appointment.Status.UPCOMING)
+                .source(Appointment.Source.MANUAL)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .isWhatsappNumber(oldAppointment.getIsWhatsappNumber())
+                .build();
+        appointmentRepository.save(newAppointment);
+
+        // 5. Save Reschedule History
+        RescheduleHistory rh = RescheduleHistory.builder()
+                .oldAppointment(oldAppointment)
+                .newAppointment(newAppointment)
+                .rescheduledAt(Instant.now())
+                .build();
+        rescheduleHistoryRepository.save(rh);
+
+        // 6. Publish events (Free old slot, book new one)
+        SlotCancelledEvent oldSlotEvent = new SlotCancelledEvent(oldAppointment.getId(), doctorId, oldAppointment.getStartTime(), oldAppointment.getEndTime());
+        rabbitTemplate.convertAndSend("appointments.exchange", "appointments.rescheduled", oldSlotEvent);
+
+        SlotBookedEvent newSlotEvent = new SlotBookedEvent(newAppointment.getId(), newAppointment.getZohoId(), doctorId, patientId, newStartTime, newEndTime);
+        rabbitTemplate.convertAndSend("appointments.exchange", "appointments.booked", newSlotEvent);
+
+        log.info("Rasa Reschedule successful oldId={} newId={}", oldId, newAppointment.getId());
+        return newAppointment;
+    }
+
+    @Transactional
+    public void cancel(String appointmentId) {
+        Long id;
+        try {
+            id = Long.valueOf(appointmentId);
+        } catch (NumberFormatException e) {
+            throw new AppointmentNotFoundException(appointmentId);
+        }
+
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new AppointmentNotFoundException(appointmentId));
+
+        if (appointment.getStatus() == Appointment.Status.CANCELLED) {
+            log.info("Appointment {} already cancelled.", id);
+            return;
+        }
+
+        appointment.setStatus(Appointment.Status.CANCELLED);
+        appointment.setUpdatedAt(Instant.now());
+        appointmentRepository.save(appointment);
+
+        // Record the cancellation slot
+        SlotCancellation sc = SlotCancellation.builder()
+                .appointment(appointment)
+                .doctor(appointment.getDoctor())
+                .cancelledAt(Instant.now())
+                .notificationSent(false)
+                .build();
+        slotCancellationRepository.save(sc);
+
+        // Publish event to free the slot
+        SlotCancelledEvent slotCancelledEvent = new SlotCancelledEvent(appointment.getId(), appointment.getDoctor().getId(), appointment.getStartTime(), appointment.getEndTime());
+        rabbitTemplate.convertAndSend("appointments.exchange", "appointments.cancelled", slotCancelledEvent);
+
+        log.info("Rasa-driven cancellation processed for ID: {}", id);
+    }
+
+    public void denyOfferStatus(String oldId) {
+        // In a production system, this would typically update a Notification/Offer entity
+        // to mark it as 'declined' so it isn't shown again or to free up a spot on a waitlist.
+        // For now, simple logging suffices as the main status change is external to this service.
+        log.info("Slot offer denied by patient for old appointment ID: {}", oldId);
     }
 
 }
