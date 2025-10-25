@@ -8,6 +8,8 @@ public final class DateUtils {
 
     private static final DateTimeFormatter RASA_DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
+    private static final DateTimeFormatter ZOHO_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MMM-yyyy");
+
     private static final DateTimeFormatter ISO_DATE_TIME_FORMATTER = DateTimeFormatter.ISO_INSTANT.withZone(ZoneId.of("UTC"));
 
     private static final ZoneId DEFAULT_API_ZONE = ZoneId.of("UTC");
@@ -81,10 +83,9 @@ public final class DateUtils {
             return null;
         }
         try {
-            LocalDate localDate = LocalDate.parse(dateStr, DateTimeFormatter.ISO_DATE);
+            LocalDate localDate = LocalDate.parse(dateStr, ZOHO_DATE_FORMATTER);
             return localDate.atStartOfDay(zoneId).toInstant();
         } catch (DateTimeParseException e) {
-            //log.error("Failed to parse date string: {} with zone {}", dateStr, zoneId, e);
             throw new IllegalArgumentException("Invalid date format.", e);
         }
     }

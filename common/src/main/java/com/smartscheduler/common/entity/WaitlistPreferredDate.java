@@ -33,4 +33,10 @@ public class WaitlistPreferredDate {
     public LocalDate getPreferredDateLocal() {
         return LocalDate.ofInstant(preferredDate, ZoneId.of("UTC"));
     }
+
+    @Override
+    public String toString() {
+        return "WaitlistPreferredDate";
+    }
+
 }

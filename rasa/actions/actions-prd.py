@@ -10,7 +10,7 @@ from rasa_sdk.events import SlotSet, ActiveLoop, FollowupAction, EventType
 import json
 
 # --- CONFIGURATION ---
-BASE_URL = "http://localhost:8080/api/v1/appointment"
+BASE_URL = "http://gateway:8080/api/v1/appointment/external"
 BUSINESS_HOURS_START = 10
 BUSINESS_HOURS_END = 18
 
@@ -24,8 +24,7 @@ class AppointmentAPI:
     def get_user_appointments(self, phone_number: str) -> List[Dict[str, Any]]:
         """Fetches all appointments for a user."""
         try:
-            # Endpoint: GET http://localhost:8080/api/v1/appointment/user/{phone_number}
-            response = requests.get(f"{self.base_url}/user/{phone_number}", timeout=5)
+            response = requests.get(f"{self.base_url}/by-phone/{phone_number}", timeout=300)
             response.raise_for_status()
             # Assuming the response body is {'appointments': [...]}
             return response.json().get("appointments", [])
@@ -36,8 +35,7 @@ class AppointmentAPI:
     def lookup_appointment_details(self, appointment_id: str) -> Dict[str, Any] | None:
         """Fetches details for a single appointment ID."""
         try:
-            # Endpoint: GET http://localhost:8080/api/v1/appointment/{appointment_id}
-            response = requests.get(f"{self.base_url}/{appointment_id}", timeout=5)
+            response = requests.get(f"{self.base_url}/{appointment_id}", timeout=300)
             response.raise_for_status()
             # Assuming the API returns the single appointment object directly
             return response.json()
@@ -49,12 +47,9 @@ class AppointmentAPI:
         """Performs the reschedule action (used by both form and slot offer)."""
         try:
             payload = {
-                "old_appointment_id": old_id,
-                "new_datetime": new_datetime,
-                "action": "reschedule"
+                "new_datetime": new_datetime
             }
-            # Endpoint: POST http://localhost:8080/api/v1/appointment/reschedule
-            response = requests.post(f"{self.base_url}/reschedule", json=payload, timeout=5)
+            response = requests.put(f"{self.base_url}/{old_id}", json=payload, timeout=300)
 
             if response.status_code == 200:
                 return True, "SUCCESS"
@@ -71,8 +66,7 @@ class AppointmentAPI:
     def deny_slot_offer(self, old_id: str) -> bool:
         """Marks an external slot offer as denied/expired."""
         try:
-            # Endpoint: POST http://localhost:8080/api/v1/appointment/offer/{old_id}/deny
-            response = requests.post(f"{self.base_url}/offer/{old_id}/deny", timeout=5)
+            response = requests.post(f"{self.base_url}/{old_id}/deny-offer", timeout=300)
             response.raise_for_status()
             return True
         except requests.exceptions.RequestException as e:
@@ -82,8 +76,7 @@ class AppointmentAPI:
     def cancel_appointment(self, appointment_id: str) -> bool:
         """Cancels an existing appointment."""
         try:
-            # Endpoint: DELETE http://localhost:8080/api/v1/appointment/{appointment_id}
-            response = requests.delete(f"{self.base_url}/{appointment_id}", timeout=5)
+            response = requests.delete(f"{self.base_url}/{appointment_id}", timeout=300)
             response.raise_for_status()
             return True
         except requests.exceptions.RequestException as e:

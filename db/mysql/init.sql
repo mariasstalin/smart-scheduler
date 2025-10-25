@@ -1,11 +1,24 @@
--- Drop tables if they exist
+
 DROP TABLE IF EXISTS reschedule_history;
-DROP TABLE IF EXISTS notifications;
+-- waitlist_preferred_dates references waitlist
+DROP TABLE IF EXISTS waitlist_preferred_dates;
+-- slot_cancellations references appointments and doctors
 DROP TABLE IF EXISTS slot_cancellations;
+-- notifications references appointments, patients, and doctors
+DROP TABLE IF EXISTS notifications;
+-- waitlist references patients and doctors
 DROP TABLE IF EXISTS waitlist;
+-- appointments references patients and doctors
 DROP TABLE IF EXISTS appointments;
+-- No tables reference patients
 DROP TABLE IF EXISTS patients;
+-- No tables reference doctors
 DROP TABLE IF EXISTS doctors;
+
+
+-- ***********************************
+-- 2. CREATE TABLES (Original Order is Fine)
+-- ***********************************
 
 -- Doctors table
 CREATE TABLE doctors (
@@ -21,10 +34,26 @@ CREATE TABLE doctors (
 -- Patients table
 CREATE TABLE patients (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(100) NOT NULL,
-    email VARCHAR(100),
-    phone VARCHAR(20),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    name VARCHAR(255),
+    email VARCHAR(255) UNIQUE,
+    phone VARCHAR(50),
+    time_zone VARCHAR(50) NOT NULL DEFAULT 'UTC',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    high_net_worth BOOLEAN NOT NULL DEFAULT FALSE,
+    high_profile BOOLEAN NOT NULL DEFAULT FALSE,
+    frequent_visitor BOOLEAN NOT NULL DEFAULT FALSE,
+    special_medical_needs BOOLEAN NOT NULL DEFAULT FALSE,
+    severity_level NOT NULL INTEGER DEFAULT 1,
+    chronic_condition BOOLEAN NOT NULL DEFAULT FALSE,
+    visit_count INTEGER NOT NULL DEFAULT 0,
+    last_visit_date DATE,
+    waiting_days INTEGER NOT NULL DEFAULT 0,
+    total_notifications_sent INTEGER NOT NULL DEFAULT 0,
+    total_notifications_responded INTEGER NOT NULL DEFAULT 0,
+    consecutive_misses INTEGER NOT NULL DEFAULT 0,
+    inactive_until TIMESTAMP,
+    last_notified_at TIMESTAMP,
+    staff_notes TEXT
 );
 
 -- Appointments table
@@ -40,7 +69,6 @@ CREATE TABLE appointments (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     is_whatsapp_number BOOLEAN DEFAULT FALSE,
-    slot_alert_preferred_date DATE,
     FOREIGN KEY (doctor_id) REFERENCES doctors(id),
     FOREIGN KEY (patient_id) REFERENCES patients(id)
 );
@@ -61,6 +89,7 @@ CREATE TABLE waitlist_preferred_dates (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     waitlist_id BIGINT NOT NULL,
     preferred_date DATE NOT NULL,
+    -- NOTE: ON DELETE CASCADE is a good practice here.
     FOREIGN KEY (waitlist_id) REFERENCES waitlist(id) ON DELETE CASCADE
 );
 

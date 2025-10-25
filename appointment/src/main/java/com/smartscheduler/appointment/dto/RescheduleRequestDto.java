@@ -8,7 +8,5 @@ import lombok.AllArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class RescheduleRequestDto {
-    private String oldAppointmentId;
     private String newDatetime;
-    private String action;
 }

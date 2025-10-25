@@ -8,6 +8,5 @@ import java.util.Optional;
 
 @Repository
 public interface RescheduleHistoryRepository extends JpaRepository<RescheduleHistory, Long> {
-    Optional<RescheduleHistory> findByNotificationId(Long notificationId);
 }
 

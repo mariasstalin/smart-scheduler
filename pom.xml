@@ -40,9 +40,7 @@
     <module>config</module>
     <module>gateway</module>
     <module>appointment</module>
-	<module>rescheduler</module>
     <module>notification</module>
-    <module>audit</module>
     <module>demo</module>
   </modules>
 

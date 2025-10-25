@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -33,7 +34,8 @@ public class Waitlist {
     private Appointment appointment;
 
     @OneToMany(mappedBy = "waitlist", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<WaitlistPreferredDate> preferredDates;
+    @Builder.Default
+    private List<WaitlistPreferredDate> preferredDates = new ArrayList<>();
 
     private Boolean active;
 
@@ -44,5 +46,15 @@ public class Waitlist {
     private Instant optOutExpiry;
 
     private Boolean notified;
+
+    public void addPreferredDate(WaitlistPreferredDate preferredDate) {
+        this.preferredDates.add(preferredDate);
+        preferredDate.setWaitlist(this);
+    }
+
+    @Override
+    public String toString() {
+        return "Waitlist";
+    }
 
 }

@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Data
 @Builder
@@ -45,6 +46,9 @@ public class BookAppointmentPayload {
     private String slotAlertPreferredDate3;
 
     public Boolean getIsWhatsappNumber() {
+        if(Objects.isNull(isWhatsappNumber)) {
+            return false;
+        }
         if (isWhatsappNumber instanceof String s) {
             return false;
         }
@@ -54,14 +58,14 @@ public class BookAppointmentPayload {
 
     public List<String> getSlotAlertPreferredDates() {
         List<String> slotAlertPreferredDates = new ArrayList<>();
-        if(!slotAlertPreferredDate1.isBlank()) {
+        if(Objects.nonNull(slotAlertPreferredDate1) && !slotAlertPreferredDate1.isBlank()) {
             slotAlertPreferredDates.add(slotAlertPreferredDate1);
         }
-        if(!slotAlertPreferredDate2.isBlank()) {
+        if(Objects.nonNull(slotAlertPreferredDate2) && !slotAlertPreferredDate2.isBlank()) {
             slotAlertPreferredDates.add(slotAlertPreferredDate2);
         }
-        if(!slotAlertPreferredDate3.isBlank()) {
-            slotAlertPreferredDates.add(slotAlertPreferredDate1);
+        if(Objects.nonNull(slotAlertPreferredDate3) && !slotAlertPreferredDate3.isBlank()) {
+            slotAlertPreferredDates.add(slotAlertPreferredDate3);
         }
         return slotAlertPreferredDates;
     }

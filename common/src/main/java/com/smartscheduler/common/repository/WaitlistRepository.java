@@ -17,9 +17,6 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long> {
     List<Waitlist> findByDoctorAndActiveTrue(Doctor doctor);
     List<Waitlist> findByDoctorAndActiveFalse(Doctor doctor);
     List<Waitlist> findByPatientAndActiveTrue(Patient patient);
-
-    List<Waitlist> findByDoctorAndPreferredDateAndNotifyOnSlotOpenOrderByCreatedAtAsc(Doctor doctor, LocalDate preferredDate, Boolean notifyOnSlotOpen);
-
 }
 
 

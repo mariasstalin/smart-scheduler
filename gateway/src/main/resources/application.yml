@@ -1,7 +1,10 @@
+server:
+  port: 8080
 
 spring:
   application:
     name: gateway
+
   cloud:
     gateway:
       server:
@@ -10,12 +13,7 @@ spring:
             locator:
               enabled: true
               lower-case-service-id: true
-
           routes:
-            - id: user
-              uri: lb://user
-              predicates:
-                - Path=/api/v1/user/**
             - id: appointment
               uri: lb://appointment
               predicates:
@@ -24,7 +22,12 @@ spring:
               uri: lb://notification
               predicates:
                 - Path=/api/v1/notification/**
-            - id: audit
-              uri: lb://audit
-              predicates:
-                - Path=/api/v1/audit/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway,metrics
+  endpoint:
+    gateway:
+      access: unrestricted
