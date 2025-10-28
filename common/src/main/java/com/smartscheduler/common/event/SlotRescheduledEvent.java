@@ -16,9 +16,6 @@ import java.time.ZoneId;
 @AllArgsConstructor
 public class SlotRescheduledEvent implements Serializable {
     private Long notificationId;
-    private Long appointmentId;
-    private Long patientId;
-    private Long doctorId;
     private Instant startTime;
     private Instant endTime;
 

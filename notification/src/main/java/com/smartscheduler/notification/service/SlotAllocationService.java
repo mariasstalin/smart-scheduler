@@ -3,23 +3,22 @@ package com.smartscheduler.notification.service;
 import com.smartscheduler.common.entity.*;
 import com.smartscheduler.common.event.*;
 import com.smartscheduler.common.repository.*;
-import com.smartscheduler.notification.client.messaging.MessagingClient;
+import com.smartscheduler.notification.config.NotificationProperties;
+import com.smartscheduler.common.util.DateUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.*;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.*;
 
 @Service
 @Slf4j
-public class NotificationService {
+public class SlotAllocationService {
 
     @Autowired
     private WaitlistRepository waitlistRepository;
@@ -36,27 +35,26 @@ public class NotificationService {
     @Autowired
     private PatientRepository patientRepository;
 
-    @Qualifier("${messaging.provider:TwilioClient}")
-    @Autowired
-    private MessagingClient messagingClient;
-
     @Autowired
     private RabbitTemplate rabbitTemplate;
 
     @Autowired
     private RasaService rasaService;
 
-    // single-thread scheduling for sequencing notifications; pool size tuned to needs
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(8);
+    @Autowired
+    private PriorityCalculator priorityService;
+
+    @Autowired
+    private NotificationProperties notificationProperties;
+
+    @Autowired
+    private MessageService messageService;
+
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(Runtime.getRuntime().availableProcessors());
     private final ConcurrentMap<Long, ScheduledFuture<?>> timeoutTasks = new ConcurrentHashMap<>();
 
-    // configuration: how long to wait for a reply
-    private static final long RESPONSE_WINDOW_MINUTES = 1;
-    private static final int MAX_CONSECUTIVE_MISSES = 3;
-    private static final Duration OPT_OUT_DURATION = Duration.ofHours(24);
-
-    // The AppointmentService publishes SlotCancelledEvent to "appointments.exchange" with routing "appointments.cancelled".
-    @RabbitListener(queues = "appointments.cancelled")
+    // Corrected queue name to use the plural 'appointments.slots.cancelled.queue'
+    @RabbitListener(queues = "appointments.slots.cancelled.queue")
     public void onSlotCancelled(SlotCancelledEvent event) {
         log.info("Received SlotCancelledEvent: {}", event);
 
@@ -73,13 +71,11 @@ public class NotificationService {
         LocalDate slotDateUtc = slotStart.toLocalDate();
         log.info("Processing cancelled slot for doctor={}, slotStart={} (UTC date={})", doctor.getId(), slotStart, slotDateUtc);
 
-        // 1) Find waitlist entries for this doctor whose preferredDates include this slot's UTC LocalDate and are active.
         List<Waitlist> candidates = waitlistRepository.findByDoctorAndActiveTrue(doctor)
                 .stream()
                 .filter(w -> preferredDatesContainUtcDate(w, slotDateUtc))
                 .toList();
 
-        // Reactivate waitlist entries if optOutExpiry passed
         Instant now = Instant.now();
         for (Waitlist w : waitlistRepository.findByDoctorAndActiveFalse(doctor)) {
             if (w.getOptOutExpiry() != null && w.getOptOutExpiry().isBefore(now)) {
@@ -91,20 +87,17 @@ public class NotificationService {
             }
         }
 
-        // compute effective priority score: patient.getPriorityScore() minus penalty for consecutive misses
-        candidates.sort(Comparator.<Waitlist>comparingDouble(w -> w.getPatient().getPriorityScore())
+        candidates.sort(Comparator.<Waitlist>comparingDouble(w -> priorityService.calculateScore(w.getPatient()))
                 .reversed()
                 .thenComparing(Waitlist::getCreatedAt));
 
-        // remove candidates who are currently opted-out (active false should already filter) or with consecutive misses >= threshold
-        candidates.removeIf(w -> w.getPatient() == null || w.getPatient().getConsecutiveMisses() >= MAX_CONSECUTIVE_MISSES);
+        candidates.removeIf(w -> w.getPatient() == null || w.getPatient().getConsecutiveMisses() >= notificationProperties.getMaxConsecutiveMisses());
 
         if (!candidates.isEmpty()) {
             notifyWaitlistSequentially(candidates.iterator(), doctor, slotStart, slotEnd, event);
             return;
         }
 
-        // 2) fallback - notify same-day future appointments (later in day) for this doctor
         List<Appointment> futureAppointments = appointmentRepository.findByDoctorAndStartTimeAfterAndStatus(doctor, slotStart, Appointment.Status.UPCOMING);
         futureAppointments.sort(Comparator.comparing(Appointment::getStartTime));
         if (!futureAppointments.isEmpty()) {
@@ -112,7 +105,6 @@ public class NotificationService {
             return;
         }
 
-        // 3) no candidates -> open slot to public
         openSlotToPublic(doctor, slotStart, event);
     }
 
@@ -133,7 +125,7 @@ public class NotificationService {
 
     private void notifyWaitlistSequentially(Iterator<Waitlist> it, Doctor doctor, LocalDateTime slotStart, LocalDateTime slotEnd, SlotCancelledEvent event) {
         if (!it.hasNext()) {
-            processCancelledSlot(doctor, slotStart, slotEnd, event); // fallback
+            processCancelledSlot(doctor, slotStart, slotEnd, event);
             return;
         }
 
@@ -145,7 +137,6 @@ public class NotificationService {
             return;
         }
 
-        // check opt-out expiry now
         if (!wl.getActive()) {
             if (wl.getOptOutExpiry() != null && wl.getOptOutExpiry().isBefore(Instant.now())) {
                 wl.setActive(true);
@@ -159,7 +150,6 @@ public class NotificationService {
             }
         }
 
-        // prepare notification record
         Notification notification = Notification.builder()
                 .patient(patient)
                 .doctor(doctor)
@@ -167,36 +157,39 @@ public class NotificationService {
                 .notificationType(Notification.NotificationType.SLOT_OPEN)
                 .status(Notification.Status.SENT)
                 .sentAt(Instant.now())
-                .expiresAt(Instant.now().plus(Duration.ofMinutes(RESPONSE_WINDOW_MINUTES)))
+                .expiresAt(Instant.now().plus(notificationProperties.getResponseWindowDuration()))
                 .startTime(slotStart.toInstant(ZoneOffset.UTC))
                 .endTime(slotEnd.toInstant(ZoneOffset.UTC))
                 .build();
         notificationRepository.save(notification);
 
-        // increment total notifications sent (for analytics/responsiveness)
         patient.setTotalNotificationsSent(patient.getTotalNotificationsSent() + 1);
         patientRepository.save(patient);
 
-        // mark waitlist notified
         wl.setNotified(true);
         waitlistRepository.save(wl);
 
         try {
-            ZonedDateTime zonedSlotStart = slotStart.atZone(ZoneOffset.UTC).withZoneSameInstant(patient.getTimeZoneId());
-            String msg = String.format("Slot available at %s. Reply YES to confirm. (notificationId:%d)", zonedSlotStart.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), notification.getId());
-            messagingClient.sendMessage(patient.getPhone(), msg);
-            rasaService.sendSlotAndGetResponse(patient.getPhone(), slotStart, patient.getTimeZoneId());
+            List<Map<String, Object>> rasaResponse = rasaService.sendExternalSlotOffer(
+                    patient.getPhone(),
+                    DateUtils.toFormattedDateTimeString(slotStart, patient.getTimeZoneId()),
+                    String.valueOf(event.getAppointmentId()),
+                    String.valueOf(notification.getId())
+            );
+            messageService.sendWhatsAppMessage(rasaResponse);
         } catch (Exception ex) {
             log.error("Failed to send message to patientId={}, skipping to next candidate", patient.getId(), ex);
             notification.setStatus(Notification.Status.EXPIRED);
             notificationRepository.save(notification);
-            // do not increment consecutiveMisses here (send failure is not patient fault)
             notifyWaitlistSequentially(it, doctor, slotStart, slotEnd, event);
             return;
         }
 
-        // schedule timeout task
-        ScheduledFuture<?> future = scheduler.schedule(() -> handleWaitlistTimeout(notification.getId(), it, doctor, slotStart, slotEnd, event), RESPONSE_WINDOW_MINUTES, TimeUnit.MINUTES);
+        ScheduledFuture<?> future = scheduler.schedule(
+                () -> handleWaitlistTimeout(notification.getId(), it, doctor, slotStart, slotEnd, event),
+                notificationProperties.getResponseWindowMinutes(),
+                TimeUnit.MINUTES
+        );
         timeoutTasks.put(notification.getId(), future);
     }
 
@@ -209,20 +202,17 @@ public class NotificationService {
         }
 
         if (notif.getStatus() == Notification.Status.SENT) {
-            // expired w/o response
             notif.setStatus(Notification.Status.EXPIRED);
             notif.setExpiresAt(Instant.now());
             notificationRepository.save(notif);
 
             Patient patient = notif.getPatient();
-            // increment consecutive misses and totalSent already incremented earlier
             patient.setConsecutiveMisses(patient.getConsecutiveMisses() + 1);
             patientRepository.save(patient);
 
-            // If consecutive misses exceed threshold, deactivate all their waitlist entries and set opt-out expiry
-            if (patient.getConsecutiveMisses() >= MAX_CONSECUTIVE_MISSES) {
+            if (patient.getConsecutiveMisses() >= notificationProperties.getMaxConsecutiveMisses()) {
                 List<Waitlist> userWaitlists = waitlistRepository.findByPatientAndActiveTrue(patient);
-                Instant optOutExpiry = Instant.now().plus(OPT_OUT_DURATION);
+                Instant optOutExpiry = Instant.now().plus(notificationProperties.getOptOutDuration());
                 for (Waitlist w : userWaitlists) {
                     w.setActive(false);
                     w.setOptOutExpiry(optOutExpiry);
@@ -232,10 +222,8 @@ public class NotificationService {
             }
 
             timeoutTasks.remove(notificationId);
-            // continue chain to next waitlist candidate
             notifyWaitlistSequentially(it, doctor, slotStart, slotEnd, event);
         } else {
-            // already handled (responded)
             timeoutTasks.remove(notificationId);
         }
     }
@@ -256,7 +244,7 @@ public class NotificationService {
                 .notificationType(Notification.NotificationType.SLOT_OPEN)
                 .status(Notification.Status.SENT)
                 .sentAt(Instant.now())
-                .expiresAt(Instant.now().plus(Duration.ofMinutes(RESPONSE_WINDOW_MINUTES)))
+                .expiresAt(Instant.now().plus(notificationProperties.getResponseWindowDuration()))
                 .startTime(slotStart.toInstant(ZoneOffset.UTC))
                 .endTime(slotEnd.toInstant(ZoneOffset.UTC))
                 .build();
@@ -265,10 +253,14 @@ public class NotificationService {
         patient.setTotalNotificationsSent(patient.getTotalNotificationsSent() + 1);
         patientRepository.save(patient);
 
-        ZonedDateTime zonedSlotStart = slotStart.atZone(ZoneOffset.UTC).withZoneSameInstant(patient.getTimeZoneId());
-        String msg = "A new appointment slot is available on %s. Reply YES to confirm - your current appointment will be rescheduled, or NO to skip. This slot will be offered to the next patient in %d minutes.";
         try {
-            messagingClient.sendMessage(patient.getPhone(), String.format(msg, zonedSlotStart.format(DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm")), RESPONSE_WINDOW_MINUTES));
+            // Unifying the notification logic to use Rasa service for future appointments as well
+            rasaService.sendExternalSlotOffer(
+                    patient.getPhone(),
+                    DateUtils.toFormattedDateTimeString(slotStart, patient.getTimeZoneId()),
+                    String.valueOf(appointment.getId()), // The old appointment ID is the one the patient holds now
+                    String.valueOf(notification.getId())
+            );
         } catch (Exception ex) {
             log.error("Failed to send message to patientId={}, skipping to next future appointment", patient.getId(), ex);
             notification.setStatus(Notification.Status.EXPIRED);
@@ -277,7 +269,11 @@ public class NotificationService {
             return;
         }
 
-        ScheduledFuture<?> future = scheduler.schedule(() -> handleFutureTimeout(notification.getId(), it, doctor, slotStart, slotEnd, event), RESPONSE_WINDOW_MINUTES, TimeUnit.MINUTES);
+        ScheduledFuture<?> future = scheduler.schedule(
+                () -> handleFutureTimeout(notification.getId(), it, doctor, slotStart, slotEnd, event),
+                notificationProperties.getResponseWindowMinutes(),
+                TimeUnit.MINUTES
+        );
         timeoutTasks.put(notification.getId(), future);
     }
 
@@ -294,14 +290,13 @@ public class NotificationService {
             notification.setExpiresAt(Instant.now());
             notificationRepository.save(notification);
 
-            // increment consecutive misses for the patient (future appointment owner) - may apply same opt-out logic
             Patient patient = notification.getPatient();
             patient.setConsecutiveMisses(patient.getConsecutiveMisses() + 1);
             patientRepository.save(patient);
 
-            if (patient.getConsecutiveMisses() >= MAX_CONSECUTIVE_MISSES) {
+            if (patient.getConsecutiveMisses() >= notificationProperties.getMaxConsecutiveMisses()) {
                 List<Waitlist> userWaitlists = waitlistRepository.findByPatientAndActiveTrue(patient);
-                Instant optOutExpiry = Instant.now().plus(OPT_OUT_DURATION);
+                Instant optOutExpiry = Instant.now().plus(notificationProperties.getOptOutDuration());
                 for (Waitlist w : userWaitlists) {
                     w.setActive(false);
                     w.setOptOutExpiry(optOutExpiry);
@@ -316,72 +311,73 @@ public class NotificationService {
         }
     }
 
-    @RabbitListener(queues = "appointments.patient_response")
+    // Corrected queue name to use the plural 'appointments.slots.reallocated.queue'
+    @RabbitListener(queues = "appointments.slots.reallocated.queue")
     @Transactional
-    public void onPatientResponse(PatientResponseEvent responseEvent) {
-        log.info("Received PatientResponseEvent: {}", responseEvent);
-
-        notificationRepository.findById(responseEvent.getNotificationId()).ifPresent(notification -> {
+    public void onSlotsReallocated(SlotReallocatedEvent slotReallocatedEvent) {
+        notificationRepository.findById(slotReallocatedEvent.getNotificationId()).ifPresent(notification -> {
             if (notification.getStatus() != Notification.Status.SENT) {
                 log.info("Notification {} already handled (status={})", notification.getId(), notification.getStatus());
                 return;
             }
 
             Patient patient = notification.getPatient();
-            String resp = responseEvent.getResponse();
 
-            // Cancel timeout task
             ScheduledFuture<?> future = timeoutTasks.remove(notification.getId());
             if (future != null) future.cancel(false);
 
-            if ("YES".equalsIgnoreCase(resp)) {
-                notification.setStatus(Notification.Status.CONFIRMED);
-                notification.setConfirmedAt(Instant.now());
-                notificationRepository.save(notification);
+            notification.setStatus(Notification.Status.CONFIRMED);
+            notification.setConfirmedAt(Instant.now());
+            notificationRepository.save(notification);
 
-                // update patient stats
-                patient.setTotalNotificationsResponded(patient.getTotalNotificationsResponded() + 1);
-                patient.setConsecutiveMisses(0);
-                patientRepository.save(patient);
+            patient.setTotalNotificationsResponded(patient.getTotalNotificationsResponded() + 1);
+            patient.setConsecutiveMisses(0);
+            patientRepository.save(patient);
 
-                // publish reschedule request to rescheduler queue (SlotRescheduledEvent)
-                SlotRescheduledEvent res = SlotRescheduledEvent.builder()
-                        .notificationId(notification.getId())
-                        .appointmentId(notification.getAppointment() != null ? notification.getAppointment().getId() : null)
-                        .patientId(patient.getId())
-                        .doctorId(notification.getDoctor().getId())
-                        .startTime(notification.getStartTime())
-                        .endTime(notification.getEndTime())
-                        .build();
+            SlotRescheduledEvent slotRescheduledEvent = SlotRescheduledEvent.builder()
+                    .notificationId(notification.getId())
+                    .startTime(notification.getStartTime())
+                    .endTime(notification.getEndTime())
+                    .build();
+            // Corrected routing key to use the plural 'appointments.slots.rescheduled'
+            rabbitTemplate.convertAndSend("appointments.exchange", "appointments.slots.rescheduled", slotRescheduledEvent);
+            log.info("Successfully confirmed and reallocated slot via notification {}. Emitted SlotRescheduledEvent.", notification.getId());
+        });
+    }
 
-                rabbitTemplate.convertAndSend("reschedule_request_queue", res);
-                log.info("Published SlotRescheduledEvent notificationId={}", notification.getId());
-
-            } else {
-                // NO or any other response => mark declined and re-emit the slot cancelled so chain continues
-                notification.setStatus(Notification.Status.RESPONDED);
-                notification.setResponse(Notification.Response.NO);
-                notification.setExpiresAt(Instant.now());
-                notificationRepository.save(notification);
-
-                // increment consecutive misses? The patient actively declined, we treat as responded (do not increment consecutive misses)
-                // Re-emit SlotCancelledEvent so NotificationService picks next candidate
-                SlotCancelledEvent reEmit = new SlotCancelledEvent(
-                        notification.getAppointment() != null ? notification.getAppointment().getId() : null,
-                        notification.getDoctor().getId(),
-                        notification.getStartTime(),
-                        notification.getEndTime()
-                );
-                rabbitTemplate.convertAndSend("appointments.exchange", "appointments.cancelled", reEmit);
-                log.info("Patient declined; re-emitted SlotCancelledEvent for doctor={} slot={}", notification.getDoctor().getId(), notification.getStartTime());
+    // Corrected queue name to use the plural 'appointments.slots.denied.queue'
+    @RabbitListener(queues = "appointments.slots.denied.queue")
+    @Transactional
+    public void onSlotsDenied(SlotReallocatedEvent slotReallocatedEvent) {
+        notificationRepository.findById(slotReallocatedEvent.getNotificationId()).ifPresent(notification -> {
+            if (notification.getStatus() != Notification.Status.SENT) {
+                log.info("Notification {} already handled (status={})", notification.getId(), notification.getStatus());
+                return;
             }
+
+            ScheduledFuture<?> future = timeoutTasks.remove(notification.getId());
+            if (future != null) future.cancel(false);
+
+            notification.setStatus(Notification.Status.RESPONDED);
+            notification.setResponse(Notification.Response.NO);
+            notification.setExpiresAt(Instant.now());
+            notificationRepository.save(notification);
+
+            SlotCancelledEvent reEmit = new SlotCancelledEvent(
+                    notification.getAppointment() != null ? notification.getAppointment().getId() : null,
+                    notification.getDoctor().getId(),
+                    notification.getStartTime(),
+                    notification.getEndTime()
+            );
+            // Corrected routing key to use the plural 'appointments.slots.cancelled'
+            rabbitTemplate.convertAndSend("appointments.exchange", "appointments.slots.cancelled", reEmit);
+            log.info("Patient declined; re-emitted SlotCancelledEvent for doctor={} slot={}", notification.getDoctor().getId(), notification.getStartTime());
         });
     }
 
     private void openSlotToPublic(Doctor doctor, LocalDateTime slotStart, SlotCancelledEvent event) {
         log.info("Opening slot to public for doctor={} slotStart={}", doctor.getId(), slotStart);
-        // Publish to appointments.exchange with routing key appointments.open — AppointmentService or a sync worker should handle making slot visible.
-        rabbitTemplate.convertAndSend("appointments.exchange", "appointments.open",
-                Map.of("doctorId", doctor.getId(), "startIso", event.getStartTime(), "endIso", event.getEndTime()));
+        // Corrected routing key to use the plural 'appointments.slots.opened'
+        rabbitTemplate.convertAndSend("appointments.exchange", "appointments.slots.opened", Map.of("doctorId", doctor.getId(), "startIso", event.getStartTime(), "endIso", event.getEndTime()));
     }
 }

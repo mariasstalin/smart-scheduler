@@ -1,4 +1,3 @@
-version: '3.8'
 
 # Define a common network for all services
 networks:
@@ -122,6 +121,26 @@ services:
       - smart_scheduler_net
 
   # -------------------------
+  # Light GBM
+  # -------------------------
+  light-gbm:
+    build:
+      context: ./light-gbm
+      dockerfile: Dockerfile
+    image: smart-scheduler-light-gbm
+    container_name: light-gbm
+    ports:
+      - "5000:5000"
+#    healthcheck:
+#      test: ["CMD", "curl", "-f", "http://localhost:5055/health"] # Use a standard health endpoint
+#      interval: 10s
+#      retries: 5
+    profiles: ["local", "prod"]
+    networks:
+      - smart_scheduler_net
+
+
+  # -------------------------
   # Spring Boot Microservices
   # -------------------------
   discovery:
@@ -153,7 +172,7 @@ services:
     depends_on:
       discovery:
         condition: service_healthy
-    profiles: ["local", "prod"]
+    profiles: ["prod"]
     healthcheck:
       # Checks the Spring Boot Actuator health endpoint
       test: ["CMD", "wget", "-qO-", "http://localhost:8888/actuator/health"]
@@ -167,14 +186,12 @@ services:
   ngrok:
     image: ngrok/ngrok:latest
     container_name: ngrok
-    command:
-      http gateway:8080
-    depends_on:
-      gateway:
-        condition: service_healthy
+    command: http --domain=${NGROK_DOMAIN:-} --authtoken=${NGROK_AUTHTOKEN} gateway:8080
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
     ports:
       - "4040:4040"
-    profiles: ["local", "prod"]
+    profiles: ["prod"]
     networks:
       - smart_scheduler_net
 

@@ -64,18 +64,23 @@ public final class DateUtils {
         }
     }
 
-    public static Instant parseDateTime(String dateTimeString) {
+    public static Instant parseZohoDateTime(String dateTimeString, ZoneId zoneId) {
         if (dateTimeString == null || dateTimeString.isBlank()) {
             throw new IllegalArgumentException("Date time string cannot be null or empty.");
         }
         try {
             LocalDateTime ldt = LocalDateTime.parse(dateTimeString, RASA_DATE_TIME_FORMATTER);
-            ZonedDateTime zdt = ldt.atZone(DEFAULT_API_ZONE);
+            ZonedDateTime zdt = ldt.atZone(zoneId);
             return zdt.toInstant();
         } catch (DateTimeParseException e) {
             //log.error("Failed to parse date string: {} using format {}", dateTimeString, RASA_DATE_TIME_FORMATTER.toString(), e);
             throw new IllegalArgumentException("Invalid date format. Expected YYYY-MM-DD HH:MM.", e);
         }
+    }
+
+    public static String toFormattedDateTimeString(LocalDateTime localDateTime, ZoneId zoneId) {
+        ZonedDateTime zonedSlotTime = localDateTime.atZone(zoneId);
+        return zonedSlotTime.format(RASA_DATE_TIME_FORMATTER);
     }
 
     public static Instant toInstantDate(String dateStr, ZoneId zoneId) {

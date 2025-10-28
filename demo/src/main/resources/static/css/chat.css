@@ -3,7 +3,8 @@ body {
     margin: 0;
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     background-color: #ece5dd;
-    overflow-x: hidden; /* Prevent any horizontal scroll */
+    overflow-x: hidden;
+    color: #000; /* Ensure default text color is black */
 }
 
 /* Main chat container */
@@ -38,10 +39,10 @@ body {
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    background-color: #ffffff;
+    background-color: #f6f6f6; /* Lighter background for the message area */
     word-wrap: break-word;
     overflow-wrap: break-word;
-    white-space: normal; /* ensure wrapping */
+    white-space: normal;
 }
 
 /* Individual message */
@@ -49,7 +50,7 @@ body {
     display: flex;
     align-items: flex-end;
     margin: 5px 0;
-    max-width: 90%; /* Limit bubble width */
+    max-width: 90%;
     font-size: 14px;
     line-height: 1.4;
     word-wrap: break-word;
@@ -57,29 +58,17 @@ body {
     white-space: normal;
 }
 
-/* Fix to avoid bubble overflow on small screens */
+/* Bubble styling */
 .message .bubble {
     max-width: 100%;
     overflow-wrap: break-word;
-    word-break: break-word; /* ensures long words wrap */
+    word-break: break-word;
     white-space: normal;
     display: inline-block;
-}
-
-/* Animation (optional) */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(5px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* Bubble styling */
-.bubble {
     padding: 10px 14px;
     border-radius: 15px;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    white-space: normal;
     box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+    color: #000; /* Ensure text is black */
 }
 
 /* System (bot) messages - left */
@@ -89,8 +78,7 @@ body {
 }
 
 .from-system .bubble {
-    background-color: #f1f0f0;
-    color: #000;
+    background-color: #ffffff; /* White background for bot */
     border-top-left-radius: 0;
 }
 
@@ -101,8 +89,7 @@ body {
 }
 
 .from-user .bubble {
-    background-color: #dcf8c6;
-    color: #000;
+    background-color: #dcf8c6; /* Light green for user */
     border-top-right-radius: 0;
 }
 
@@ -113,6 +100,10 @@ body {
     border-radius: 50%;
     margin: 0 6px;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
 }
 
 /* Input container */
@@ -168,4 +159,35 @@ body {
 #messages::-webkit-scrollbar-thumb {
     background-color: rgba(0,0,0,0.2);
     border-radius: 3px;
+}
+
+/* ================================ */
+/* Interactive message styling      */
+/* ================================ */
+
+.interactive-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.interactive-button {
+    background-color: #25d366;
+    color: white;
+    border: none;
+    border-radius: 16px;
+    padding: 8px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.interactive-button:hover {
+    background-color: #1ebe5d;
+}
+
+.interactive-button:active {
+    background-color: #0c9444;
 }

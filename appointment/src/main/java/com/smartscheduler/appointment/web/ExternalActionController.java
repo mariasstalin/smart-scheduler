@@ -1,6 +1,7 @@
 package com.smartscheduler.appointment.web;
 
 import com.smartscheduler.appointment.dto.AppointmentResponseDto;
+import com.smartscheduler.appointment.dto.DenyRequestDto;
 import com.smartscheduler.appointment.dto.RescheduleRequestDto;
 import com.smartscheduler.appointment.dto.RescheduleResponseDto;
 import com.smartscheduler.appointment.exception.AppointmentNotFoundException;
@@ -61,25 +62,14 @@ public class ExternalActionController {
     @PutMapping("/{id}")
     public ResponseEntity<RescheduleResponseDto> rescheduleAppointment(@PathVariable String id, @RequestBody RescheduleRequestDto request) {
         try {
-            logger.info("External request to reschedule oldId={} to newTime={}",
-                    id, request.getNewDatetime());
+            logger.info("External request to reschedule oldId={} to newTime={}", id, request.getNewDatetime());
 
-            Appointment newAppointment = externalActionService.reschedule(
-                    id,
-                    request.getNewDatetime()
-            );
+            externalActionService.reschedule(Long.valueOf(request.getSlotOfferId()), Long.valueOf(id), request.getNewDatetime());
 
-            RescheduleResponseDto response = new RescheduleResponseDto(
-                    "SUCCESS",
-                    String.valueOf(newAppointment.getId()),
-                    newAppointment.getStartTimeLocal().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
-            );
-            return new ResponseEntity<>(response, HttpStatus.OK);
-
+            return new ResponseEntity<>(new RescheduleResponseDto("SUCCESS"), HttpStatus.OK);
         } catch (SlotUnavailableException e) {
             logger.warn("Reschedule failed due to conflict: {}", e.getMessage());
-            return new ResponseEntity<>(new RescheduleResponseDto("SLOT_TAKEN", null, null), HttpStatus.CONFLICT);
-
+            return new ResponseEntity<>(new RescheduleResponseDto("SLOT_TAKEN"), HttpStatus.CONFLICT);
         } catch (AppointmentNotFoundException e) {
             logger.warn("Reschedule failed: Appointment not found with ID {}.", id);
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
@@ -91,9 +81,9 @@ public class ExternalActionController {
 
     @PostMapping("/{id}/deny-offer")
     @ResponseStatus(HttpStatus.OK)
-    public void denyOffer(@PathVariable String id) {
+    public void denyOffer(@PathVariable String id, @RequestBody DenyRequestDto denyRequestDto) {
         logger.info("External action: Slot offer denied for old ID: {}", id);
-        externalActionService.denyOfferStatus(id);
+        externalActionService.denyOfferStatus(Long.valueOf(denyRequestDto.getSlotOfferId()), Long.valueOf(id));
     }
 
     @DeleteMapping("/{id}")

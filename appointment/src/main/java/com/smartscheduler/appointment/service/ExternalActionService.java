@@ -2,14 +2,15 @@ package com.smartscheduler.appointment.service;
 
 import com.smartscheduler.appointment.exception.AppointmentNotFoundException;
 import com.smartscheduler.common.entity.Appointment;
+import com.smartscheduler.common.event.SlotDeniedEvent;
+import com.smartscheduler.common.event.SlotReallocatedEvent;
 import com.smartscheduler.common.repository.AppointmentRepository;
-import com.smartscheduler.common.util.DateUtils;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -18,7 +19,8 @@ import java.util.List;
 public class ExternalActionService {
 
     private final AppointmentRepository appointmentRepository;
-    private final AppointmentService appointmentService; // Use the core service
+    private final ZohoApiService zohoApiService;
+    private final RabbitTemplate rabbitTemplate;
 
     public List<Appointment> getAppointmentsByPhoneNumber(String phoneNumber) {
         return appointmentRepository.findByPatientPhoneAndStatus(phoneNumber, Appointment.Status.UPCOMING);
@@ -35,25 +37,24 @@ public class ExternalActionService {
     }
 
     @Transactional
-    public Appointment reschedule(String oldAppointmentId, String newDatetimeString) {
-        Long oldId;
-        try {
-            oldId = Long.valueOf(oldAppointmentId);
-        } catch (NumberFormatException e) {
-            throw new AppointmentNotFoundException(oldAppointmentId);
+    public void reschedule(Long notificationId, Long appointmentId, String newDatetimeString) {
+        Appointment oldAppointment = appointmentRepository.findById(appointmentId).orElseThrow(() -> new AppointmentNotFoundException(String.valueOf(appointmentId)));
+
+        if (oldAppointment.getSource() == Appointment.Source.ZOHO && oldAppointment.getZohoId() != null) {
+            log.info("Attempting Zoho sync reschedule for local ID: {}", oldAppointment);
+
+            try {
+                zohoApiService.rescheduleAppointmentInZoho(oldAppointment.getZohoId(), newDatetimeString, oldAppointment.getDoctor().getZohoId());
+
+                rabbitTemplate.convertAndSend("appointments.exchange", "appointments.slots.reallocated", new SlotReallocatedEvent(notificationId));
+
+                log.info("Appointment saved and SlotBookedEvent published: {}", oldAppointment.getId());
+            } catch (Exception e) {
+                log.error("Failed to call Zoho reschedule API for {}.", oldAppointment.getZohoId(), e);
+                // Rollback the transaction if external sync fails
+                throw new RuntimeException("Reschedule failed: Could not synchronize with Zoho.");
+            }
         }
-
-        Appointment oldAppointment = appointmentRepository.findById(oldId)
-                .orElseThrow(() -> new AppointmentNotFoundException(oldAppointmentId));
-
-        // Calculate new start time from Rasa's string input
-        Instant newStartTime = DateUtils.parseDateTime(newDatetimeString);
-
-        // Use the core service logic for conflict check and creation
-        Appointment newAppointment = appointmentService.createNewRescheduleAppointment(oldAppointment, newStartTime);
-
-        log.info("Rasa Reschedule successful oldId={} newId={}", oldId, newAppointment.getId());
-        return newAppointment;
     }
 
     @Transactional
@@ -65,16 +66,24 @@ public class ExternalActionService {
             throw new AppointmentNotFoundException(appointmentId);
         }
 
-        Appointment appointment = appointmentRepository.findById(id)
-                .orElseThrow(() -> new AppointmentNotFoundException(appointmentId));
+        Appointment appointment = appointmentRepository.findById(id).orElseThrow(() -> new AppointmentNotFoundException(appointmentId));
 
-        // Use the core service cancellation logic
-        appointmentService.performCancellation(appointment);
-
-        log.info("Rasa-driven cancellation processed for ID: {}", id);
+        if (appointment.getSource() == Appointment.Source.ZOHO && appointment.getZohoId() != null) {
+            log.info("Attempting Zoho sync cancellation for local ID: {}", id);
+            try {
+                zohoApiService.cancelAppointmentInZoho(appointment.getZohoId());
+            } catch (Exception e) {
+                log.error("Failed to call Zoho cancel API for {}.", appointment.getZohoId(), e);
+                throw new RuntimeException("Cancellation failed: Could not synchronize with Zoho.");
+            }
+        } else {
+            log.warn("Skipping Zoho cancellation for non-Zoho or missing Zoho ID appointment: {}", id);
+        }
     }
 
-    public void denyOfferStatus(String oldId) {
-        log.info("Slot offer denied by patient for old appointment ID: {}", oldId);
+    public void denyOfferStatus(Long notificationId, Long appointmentId) {
+
+        rabbitTemplate.convertAndSend("appointments.exchange", "appointments.slots.denied", new SlotDeniedEvent(notificationId));
+        log.info("Slot offer denied by patient for old appointment ID: {}", appointmentId);
     }
 }

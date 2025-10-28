@@ -27,6 +27,7 @@ CREATE TABLE doctors (
     name VARCHAR(100) NOT NULL,
     email VARCHAR(100),
     phone VARCHAR(20),
+    time_zone VARCHAR(50),
     specialization VARCHAR(50),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -35,31 +36,25 @@ CREATE TABLE doctors (
 CREATE TABLE patients (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(255),
-    email VARCHAR(255) UNIQUE,
+    email VARCHAR(255),
     phone VARCHAR(50),
     time_zone VARCHAR(50) NOT NULL DEFAULT 'UTC',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    high_net_worth BOOLEAN NOT NULL DEFAULT FALSE,
-    high_profile BOOLEAN NOT NULL DEFAULT FALSE,
-    frequent_visitor BOOLEAN NOT NULL DEFAULT FALSE,
-    special_medical_needs BOOLEAN NOT NULL DEFAULT FALSE,
-    severity_level NOT NULL INTEGER DEFAULT 1,
-    chronic_condition BOOLEAN NOT NULL DEFAULT FALSE,
+    vip BOOLEAN NOT NULL DEFAULT FALSE,
+    severity_level INTEGER NOT NULL DEFAULT 1,
     visit_count INTEGER NOT NULL DEFAULT 0,
-    last_visit_date DATE,
-    waiting_days INTEGER NOT NULL DEFAULT 0,
     total_notifications_sent INTEGER NOT NULL DEFAULT 0,
     total_notifications_responded INTEGER NOT NULL DEFAULT 0,
     consecutive_misses INTEGER NOT NULL DEFAULT 0,
-    inactive_until TIMESTAMP,
-    last_notified_at TIMESTAMP,
+    inactive_until DATETIME,
+    last_notified_at DATETIME,
     staff_notes TEXT
 );
 
 -- Appointments table
 CREATE TABLE appointments (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    zoho_id VARCHAR(50) UNIQUE NOT NULL,
+    zoho_id VARCHAR(50) NOT NULL,
     doctor_id BIGINT NOT NULL,
     patient_id BIGINT NOT NULL,
     start_time TIMESTAMP NOT NULL,

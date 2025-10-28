@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const messagesList = document.getElementById('messages');
     const input = document.getElementById('message-input');
     const sendBtn = document.getElementById('send-btn');
@@ -6,37 +6,75 @@ document.addEventListener('DOMContentLoaded', function() {
     let stompClient = null;
 
     function connect() {
-        const socket = new SockJS('/ws');
+        const socket = new SockJS('/demo/ws');
         stompClient = Stomp.over(socket);
         stompClient.debug = null;
 
-        stompClient.connect({}, function(frame) {
+        stompClient.connect({}, function (frame) {
             console.log('Connected: ' + frame);
             sendBtn.disabled = false;
 
-            // Subscribe to this user's private topic
-            stompClient.subscribe('/topic/messages-' + userId, function(message) {
+            // Subscribe to user's private topic
+            stompClient.subscribe('/topic/messages-' + userId, function (message) {
                 const payload = JSON.parse(message.body);
-                showMessage(payload.body, 'from-system');
+                // Fix: Ignore messages that originated from this user to prevent echo duplication
+                if (payload.from === userId) {
+                    return;
+                }
+                showMessage(payload);
             });
-        }, function(error) {
+        }, function (error) {
             console.error('Connection error:', error);
             sendBtn.disabled = true;
             setTimeout(connect, 5000);
         });
     }
 
-    function showMessage(text, fromType) {
+    // Renders both normal and interactive messages
+    function showMessage(payload) {
         const li = document.createElement('li');
+        // FIX: Classify based on whether the sender ID matches the current user ID (userId).
+        // If the sender is NOT the current user, it must be the system/bot.
+        const fromType = payload.from === userId ? 'from-user' : 'from-system';
         li.className = 'message ' + fromType;
 
-        const avatar = document.createElement('img');
+        // Avatar (using emojis instead of external images for reliability)
+        const avatar = document.createElement('div');
         avatar.className = 'avatar';
-        avatar.src = fromType === 'from-system' ? '/images/bot-avatar.png' : '/images/user-avatar.png';
+        // Ensure consistent check for avatar display
+        avatar.textContent = fromType === 'from-system' ? '🤖' : '👤';
 
+        // Message bubble
         const bubble = document.createElement('div');
         bubble.className = 'bubble';
-        bubble.textContent = text;
+
+        // If message is interactive (Twilio button message simulation)
+        if (payload.type === 'interactive' && payload.interactive && payload.interactive.action) {
+            const bodyText = payload.interactive.body?.text || 'Select an option:';
+            bubble.textContent = bodyText;
+
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'interactive-buttons';
+
+            const buttons = payload.interactive.action.buttons || [];
+            buttons.forEach(btn => {
+                const buttonEl = document.createElement('button');
+                buttonEl.className = 'interactive-button';
+
+                // --- FIX: Correctly extract ID and Title from the nested 'reply' object ---
+                const buttonId = btn.reply?.id || btn.id; // Use reply.id, fallback to id
+                const buttonTitle = btn.reply?.title || btn.title || btn.text || 'Button'; // Use reply.title
+
+                buttonEl.textContent = buttonTitle;
+                buttonEl.addEventListener('click', () => handleButtonClick(buttonId, buttonTitle));
+                buttonContainer.appendChild(buttonEl);
+            });
+
+            bubble.appendChild(buttonContainer);
+        } else {
+            // Normal message
+            bubble.textContent = payload.body || payload.message || '';
+        }
 
         li.appendChild(avatar);
         li.appendChild(bubble);
@@ -44,12 +82,26 @@ document.addEventListener('DOMContentLoaded', function() {
         messagesList.scrollTop = messagesList.scrollHeight;
     }
 
+    // When user clicks a button from an interactive message
+    function handleButtonClick(buttonId, buttonText) {
+        showMessage({ from: userId, body: buttonText });
+
+        if (stompClient && stompClient.connected) {
+            stompClient.send('/app/chat', {}, JSON.stringify({
+                from: userId,
+                body: buttonText,
+                buttonId: buttonId
+            }));
+        }
+    }
+
+    // Manual message send (input + send button)
     function sendMessage() {
         const text = input.value.trim();
         if (text && stompClient && stompClient.connected) {
-            showMessage(text, 'from-user');
+            showMessage({ from: userId, body: text });
 
-            stompClient.send('/app/send', {}, JSON.stringify({
+            stompClient.send('/app/chat', {}, JSON.stringify({
                 from: userId,
                 body: text
             }));
@@ -59,7 +111,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     sendBtn.addEventListener('click', sendMessage);
-    input.addEventListener('keypress', function(e) {
+    input.addEventListener('keypress', function (e) {
         if (e.key === 'Enter') sendMessage();
     });
 

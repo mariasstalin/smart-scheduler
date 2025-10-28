@@ -13,3 +13,25 @@ management:
 
 rasa:
   url: http://localhost:5005
+
+notification:
+  scheduling:
+    response-window-minutes: 2
+    max-consecutive-misses: 3
+    opt-out-duration: PT24H
+
+  patient:
+    priority:
+      weights:
+        severity-level: 8.0
+        visit-count-max-score: 10.0
+        visit-count-divisor: 5.0
+        high-net-worth: 10.0
+        high-profile: 10.0
+        response-rate-weight: 20.0
+        consecutive-miss-penalty: 5.0
+        consecutive-miss-max-penalty: 15.0
+
+message:
+  provider: demo
+  system-phone: 919999999999

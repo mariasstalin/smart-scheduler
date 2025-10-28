@@ -12,14 +12,22 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        config.enableSimpleBroker("/topic"); // for client subscriptions
-        config.setApplicationDestinationPrefixes("/app"); // for messages sent from client
+        // Defines the prefix for destinations handled by the message broker (e.g., for subscriptions)
+        config.enableSimpleBroker("/topic");
+
+        // Defines the prefix for destinations handled by @MessageMapping in the controllers (e.g., for sending messages)
+        config.setApplicationDestinationPrefixes("/app");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // Registers the WebSocket endpoint the client connects to (SockJS('/demo/ws'))
         registry.addEndpoint("/ws")
+                // Allows connections from any origin
                 .setAllowedOriginPatterns("*")
-                .withSockJS();
+                .withSockJS()
+                // Explicitly set the client library URL to correctly resolve paths
+                // when the application is deployed with a context path like '/demo'.
+                .setClientLibraryUrl("/demo/js/sockjs.min.js");
     }
 }

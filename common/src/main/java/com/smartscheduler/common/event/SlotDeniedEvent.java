@@ -4,14 +4,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.io.Serializable;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class PatientResponseEvent implements Serializable {
+public class SlotDeniedEvent {
     private Long notificationId;
-    private Long patientId;
-    private String response;
 }
-

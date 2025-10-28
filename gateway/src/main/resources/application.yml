@@ -17,11 +17,11 @@ spring:
             - id: appointment
               uri: lb://appointment
               predicates:
-                - Path=/api/v1/appointment/**
+                - Path=/appointment/**
             - id: notification
               uri: lb://notification
               predicates:
-                - Path=/api/v1/notification/**
+                - Path=/notification/**
 
 management:
   endpoints:

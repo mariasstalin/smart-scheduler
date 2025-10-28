@@ -26,11 +26,11 @@ public class ZohoTokenService {
     private static final int PROACTIVE_REFRESH_MINUTES = 5; // Window before expiry
 
     // Credentials injected from application.yml
-    @Value("${zoho.client-id}")
+    @Value("${zoho.api.client-id}")
     private String clientId;
-    @Value("${zoho.client-secret}")
+    @Value("${zoho.api.client-secret}")
     private String clientSecret;
-    @Value("${zoho.refresh-token}")
+    @Value("${zoho.api.refresh-token}")
     private String refreshToken;
 
     public ZohoTokenService(

@@ -3,13 +3,9 @@ package com.smartscheduler.notification.service;
 import com.smartscheduler.notification.client.feign.RasaClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Recover;
-import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 
-import java.time.*;
-import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,36 +21,60 @@ public class RasaService {
         this.rasaClient = rasaClient;
     }
 
-    @Retryable(value = { Exception.class }, maxAttempts = 3, backoff = @Backoff(delay = 2000))
-    public Map<String, Object> sendSlotAndGetResponse(String userId, LocalDateTime newSlot, ZoneId zoneId) {
-        ZonedDateTime zonedNewSlot = newSlot.atZone(ZoneOffset.UTC).withZoneSameInstant(zoneId);
+    public List<Map<String, Object>> sendExternalSlotOffer(String senderId, String newSlotDatetime, String oldAppointmentId, String slotOfferId) {
 
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("event", "slot");
-        payload.put("name", "temp_new_slot_datetime");
-        payload.put("value", zonedNewSlot.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ")));
+        log.info("📤 Sending /EXTERNAL_SLOT_OFFER to Rasa for sender [{}], slotOfferId [{}]", senderId, slotOfferId);
 
-        return rasaClient.sendTrackerEvent(userId, payload);
+        try {
+            // Metadata payload
+            Map<String, Object> metadata = new HashMap<>();
+            metadata.put("new_slot_datetime", newSlotDatetime);
+            metadata.put("old_appointment_id", oldAppointmentId);
+            metadata.put("slot_offer_id", slotOfferId);
+
+            // Full payload
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("sender", senderId);
+            payload.put("message", "/EXTERNAL_SLOT_OFFER");
+            payload.put("metadata", metadata);
+
+            List<Map<String, Object>> response = rasaClient.sendMessage(payload);
+
+            if (response != null && !response.isEmpty()) {
+                log.info("✅ Rasa response received for sender [{}]: {}", senderId, response);
+                return response;
+            }
+
+            log.warn("⚠️ Empty or null Rasa response for sender [{}]", senderId);
+            return Collections.emptyList();
+
+        } catch (Exception e) {
+            log.error("❌ Failed to send /EXTERNAL_SLOT_OFFER to Rasa for sender [{}]", senderId, e);
+            return Collections.emptyList();
+        }
     }
 
-    @Recover
-    public void fallbackSendSlotAndGetResponse(Exception e, String userId, String newSlot, ZoneId zoneId) {
-        log.error("Failed to send slot and get response for user {} after retries: {}", userId, e.getMessage(), e);
-        // Optional: queue for retry, alert admin, or store in DB
-    }
+    public List<Map<String, Object>> processMessage(String senderId, String message) {
+        log.info("📨 Sending message to Rasa from [{}]: {}", senderId, message);
 
-    @Retryable(value = { Exception.class }, maxAttempts = 3, backoff = @Backoff(delay = 2000))
-    public List<Map<String, Object>> processMessage(String sender, String message) {
-        Map<String, String> payload = new HashMap<>();
-        payload.put("sender", sender);
-        payload.put("message", message);
-        return rasaClient.sendMessage(payload);
-    }
+        try {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("sender", senderId);
+            payload.put("message", message);
 
-    @Recover
-    public void fallbackProcessMessage(Exception e, String sender, String message) {
-        log.error("Failed to send slot and get response for user {} after retries: {}", sender, e.getMessage(), e);
-        // Optional: queue for retry, alert admin, or store in DB
-    }
+            List<Map<String, Object>> response = rasaClient.sendMessage(payload);
 
+            if (response != null && !response.isEmpty()) {
+                log.info("✅ Rasa response for [{}]: {}", senderId, response);
+                return response;
+            }
+
+            log.warn("⚠️ Rasa returned no response for [{}]", senderId);
+            return Collections.emptyList();
+
+        } catch (Exception e) {
+            log.error("❌ Failed to send message to Rasa for sender [{}]", senderId, e);
+            return Collections.emptyList();
+        }
+    }
 }

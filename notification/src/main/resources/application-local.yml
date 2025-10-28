@@ -15,10 +15,6 @@ spring:
   rabbitmq:
     host: localhost
     port: 5672
-  redis:
-    host: localhost
-    port: 6379
+    username: root
+    password: root
 
-messaging:
-  provider: demoClient
-  system-phone: 919988776655

@@ -15,29 +15,39 @@ public class RabbitMQConfig {
         return new DirectExchange("appointments.exchange");
     }
 
+    // --- Queue Definitions (Pluralized for consistency) ---
+
     @Bean
-    public Queue appointmentBookedQueue() {
-        return QueueBuilder.durable("appointment.booked.queue").build();
+    public Queue appointmentsSlotsBookedQueue() {
+        // Corrected queue name: appointments.slots.booked.queue
+        return QueueBuilder.durable("appointments.slots.booked.queue").build();
     }
 
     @Bean
-    public Queue appointmentCancelledQueue() {
-        return QueueBuilder.durable("appointment.cancelled.queue").build();
+    public Queue appointmentsSlotsCancelledQueue() {
+        // Corrected queue name: appointments.slots.cancelled.queue
+        return QueueBuilder.durable("appointments.slots.cancelled.queue").build();
     }
 
+    // --- Binding Definitions ---
+
     @Bean
-    public Binding bookingBinding(Queue appointmentBookedQueue, DirectExchange appointmentsExchange) {
-        return BindingBuilder.bind(appointmentBookedQueue)
+    public Binding bookingBinding(Queue appointmentsSlotsBookedQueue, DirectExchange appointmentsExchange) {
+        // Routing key is correct: appointments.slots.booked
+        return BindingBuilder.bind(appointmentsSlotsBookedQueue)
                 .to(appointmentsExchange)
-                .with("appointments.booked");
+                .with("appointments.slots.booked");
     }
 
     @Bean
-    public Binding cancellationBinding(Queue appointmentCancelledQueue, DirectExchange appointmentsExchange) {
-        return BindingBuilder.bind(appointmentCancelledQueue)
+    public Binding cancellationBinding(Queue appointmentsSlotsCancelledQueue, DirectExchange appointmentsExchange) {
+        // Routing key is correct: appointments.slots.cancelled
+        return BindingBuilder.bind(appointmentsSlotsCancelledQueue)
                 .to(appointmentsExchange)
-                .with("appointments.cancelled");
+                .with("appointments.slots.cancelled");
     }
+
+    // --- Messaging Configuration ---
 
     @Bean
     public Jackson2JsonMessageConverter jackson2JsonMessageConverter() {

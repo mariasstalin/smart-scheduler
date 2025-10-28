@@ -1,9 +1,13 @@
 package com.smartscheduler.appointment.dto;
 
 import com.smartscheduler.common.entity.Appointment;
+import com.smartscheduler.common.util.DateUtils;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * Data Transfer Object (DTO) specifically for responses sent back to the Rasa action server.
@@ -14,6 +18,8 @@ import lombok.AllArgsConstructor;
 @AllArgsConstructor
 public class AppointmentResponseDto {
 
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
     private String appointmentId;
 
     private String service;
@@ -23,16 +29,13 @@ public class AppointmentResponseDto {
     private String currentTime;
 
     public AppointmentResponseDto(Appointment appointment) {
-        // Use the Entity's ID
         this.appointmentId = String.valueOf(appointment.getId());
 
-        // Assuming 'service' is mapped to the Doctor's specialization
         this.service = appointment.getDoctor().getSpecialization();
 
         this.doctor = appointment.getDoctor().getName();
 
-        // Crucially, format the time correctly for Rasa
-        this.currentTime = appointment.getStartTimeLocal()
-                .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+        ZonedDateTime zdt = ZonedDateTime.ofInstant(appointment.getStartTime(), appointment.getPatient().getTimeZoneId());
+        this.currentTime = zdt.format(DATE_TIME_FORMATTER);
     }
 }

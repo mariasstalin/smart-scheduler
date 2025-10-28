@@ -9,4 +9,5 @@ import lombok.AllArgsConstructor;
 @AllArgsConstructor
 public class RescheduleRequestDto {
     private String newDatetime;
+    private String slotOfferId;
 }

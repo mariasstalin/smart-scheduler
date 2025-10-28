@@ -8,8 +8,7 @@ spring:
 
 zoho:
   api:
-    base-url: https://api.zoho.com/bookings
-    api-key: ${ZOHO_API_KEY:}
+    base-url: ${ZOHO_API_BASE_URL:https://www.zohoapis.in}
 
 management:
   endpoints:

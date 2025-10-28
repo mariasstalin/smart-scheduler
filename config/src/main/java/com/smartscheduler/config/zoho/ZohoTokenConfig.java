@@ -1,5 +1,6 @@
 package com.smartscheduler.config.zoho;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -14,10 +15,13 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 @Configuration
 public class ZohoTokenConfig {
 
+    @Value("${zoho.api.token-base-url:https://accounts.zoho.com}/oauth/v2/token")
+    private String zohoApiTokenUrl;
+
     // 1. Configure RestClient for Zoho API
     @Bean
     public RestClient zohoRestClient(RestClient.Builder builder) {
-        return builder.baseUrl("https://accounts.zoho.in/oauth/v2/token").build();
+        return builder.baseUrl(zohoApiTokenUrl).build();
     }
 
     // 2. Configure RedisTemplate for DTO Serialization
