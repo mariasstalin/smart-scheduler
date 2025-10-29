@@ -70,6 +70,11 @@ slots:
     initial_value: null
     influence_conversation: false
     mappings: []
+  old_service_name:
+    type: any
+    initial_value: null
+    influence_conversation: false
+    mappings: [ ]
   slot_offer_id:
     type: any
     initial_value: null
@@ -112,7 +117,7 @@ responses:
   utter_ask_datetime:
   - text: "What day and time would you like to reschedule your appointment to?"
   utter_ask_slot_confirmation:
-  - text: "An earlier appointment is now open on {new_slot_datetime} (originally {old_appointment_datetime}). Would you like to switch to this new time?"
+  - text: "We have an earlier opening for your {old_service_name} appointment on {new_slot_datetime}. Your original time was {old_appointment_datetime}. Would you prefer to switch to this new slot?"
     buttons:
       - title: "✅ Yes, switch to new time"
         payload: "/confirm_slot_offer"

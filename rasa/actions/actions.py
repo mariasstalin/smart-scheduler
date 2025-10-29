@@ -46,8 +46,8 @@ class AppointmentAPI:
         """Performs the reschedule action (used by both form and slot offer)."""
         try:
             payload = {
-                "new_datetime": new_datetime,
-                "slot_offer_id": slot_offer_id
+                "newDatetime": new_datetime,
+                "slotOfferId": slot_offer_id
             }
             response = requests.put(f"{self.base_url}/{old_id}", json=payload, timeout=300)
 

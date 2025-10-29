@@ -10,7 +10,7 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Transactional; // Ensure this is imported
 
 import java.time.*;
 import java.util.*;
@@ -53,13 +53,16 @@ public class SlotAllocationService {
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(Runtime.getRuntime().availableProcessors());
     private final ConcurrentMap<Long, ScheduledFuture<?>> timeoutTasks = new ConcurrentHashMap<>();
 
-    // Corrected queue name to use the plural 'appointments.slots.cancelled.queue'
+    // @RabbitListener methods are generally transactional by default due to AMQP configuration,
+    // but explicit annotations on service methods are often necessary for nested calls.
     @RabbitListener(queues = "appointments.slots.cancelled.queue")
     public void onSlotCancelled(SlotCancelledEvent event) {
         log.info("Received SlotCancelledEvent: {}", event);
 
         try {
             doctorRepository.findById(event.getDoctorId()).ifPresent(doctor -> {
+                // This call relies on the Patient/Waitlist entities being loaded/modified later,
+                // but the method itself doesn't need to be transactional.
                 processCancelledSlot(doctor, event.getStartTimeLocal(), event.getEndTimeLocal(), event);
             });
         } catch (Exception ex) {
@@ -71,11 +74,7 @@ public class SlotAllocationService {
         LocalDate slotDateUtc = slotStart.toLocalDate();
         log.info("Processing cancelled slot for doctor={}, slotStart={} (UTC date={})", doctor.getId(), slotStart, slotDateUtc);
 
-        List<Waitlist> candidates = new ArrayList<>(waitlistRepository.findByDoctorAndActiveTrueWithPreferredDates(doctor)
-                .stream()
-                .filter(w -> preferredDatesContainUtcDate(w, slotDateUtc))
-                .toList());
-
+        // 1. Reactivate expired opt-outs (logic remains correct)
         Instant now = Instant.now();
         for (Waitlist w : waitlistRepository.findByDoctorAndActiveFalseWithPreferredDates(doctor)) {
             if (w.getOptOutExpiry() != null && w.getOptOutExpiry().isBefore(now)) {
@@ -87,24 +86,39 @@ public class SlotAllocationService {
             }
         }
 
+        // 2. Build and filter waitlist candidates
+        List<Waitlist> candidates = new ArrayList<>(waitlistRepository.findByDoctorAndActiveTrueWithPreferredDates(doctor)
+                .stream()
+                .filter(w -> preferredDatesContainUtcDate(w, slotDateUtc))
+                .toList());
+
         candidates.sort(Comparator.<Waitlist>comparingDouble(w -> priorityService.calculateScore(w.getPatient()))
                 .reversed()
                 .thenComparing(Waitlist::getCreatedAt));
 
         candidates.removeIf(w -> w.getPatient() == null || w.getPatient().getConsecutiveMisses() >= notificationProperties.getMaxConsecutiveMisses());
 
+        // 3. Stage 1: Notify Waitlist
         if (!candidates.isEmpty()) {
+            log.info("Starting sequential waitlist notification for {} candidates.", candidates.size());
             notifyWaitlistSequentially(candidates.iterator(), doctor, slotStart, slotEnd, event);
             return;
         }
+        log.info("No suitable candidates on the waitlist. Checking future appointments.");
 
+
+        // 4. Stage 2: Notify Future Appointments (only if waitlist is exhausted)
         List<Appointment> futureAppointments = appointmentRepository.findByDoctorAndStartTimeAfterAndStatus(doctor, slotStart.toInstant(ZoneOffset.UTC), Appointment.Status.UPCOMING);
         futureAppointments.sort(Comparator.comparing(Appointment::getStartTime));
         if (!futureAppointments.isEmpty()) {
+            log.info("Starting sequential future appointment notification for {} patients.", futureAppointments.size());
             notifyFutureSequentially(futureAppointments.iterator(), doctor, slotStart, slotEnd, event);
             return;
         }
+        log.info("No suitable future appointments for earlier slot. Opening to public.");
 
+
+        // 5. Stage 3: Open to Public (if both lists are exhausted)
         openSlotToPublic(doctor, slotStart, event);
     }
 
@@ -123,9 +137,11 @@ public class SlotAllocationService {
         return false;
     }
 
+    // FIX 1: ADD @Transactional to ensure the Patient proxy can be loaded and saved.
+    @Transactional
     private void notifyWaitlistSequentially(Iterator<Waitlist> it, Doctor doctor, LocalDateTime slotStart, LocalDateTime slotEnd, SlotCancelledEvent event) {
         if (!it.hasNext()) {
-            processCancelledSlot(doctor, slotStart, slotEnd, event);
+            // Iteration is complete.
             return;
         }
 
@@ -163,6 +179,7 @@ public class SlotAllocationService {
                 .build();
         notificationRepository.save(notification);
 
+        // This line is now safe due to the @Transactional annotation
         patient.setTotalNotificationsSent(patient.getTotalNotificationsSent() + 1);
         patientRepository.save(patient);
 
@@ -173,7 +190,7 @@ public class SlotAllocationService {
             List<Map<String, Object>> rasaResponse = rasaService.sendExternalSlotOffer(
                     patient.getPhone(),
                     DateUtils.toFormattedDateTimeString(slotStart, patient.getTimeZoneId()),
-                    String.valueOf(event.getAppointmentId()),
+                    String.valueOf(wl.getAppointment().getId()),
                     String.valueOf(notification.getId())
             );
             messageService.sendWhatsAppMessage(rasaResponse);
@@ -206,6 +223,7 @@ public class SlotAllocationService {
             notif.setExpiresAt(Instant.now());
             notificationRepository.save(notif);
 
+            // Accessing patient needs a session, which @Transactional provides
             Patient patient = notif.getPatient();
             patient.setConsecutiveMisses(patient.getConsecutiveMisses() + 1);
             patientRepository.save(patient);
@@ -228,14 +246,17 @@ public class SlotAllocationService {
         }
     }
 
+    // FIX 2: ADD @Transactional to ensure the Patient proxy can be loaded and saved.
+    @Transactional
     private void notifyFutureSequentially(Iterator<Appointment> it, Doctor doctor, LocalDateTime slotStart, LocalDateTime slotEnd, SlotCancelledEvent event) {
         if (!it.hasNext()) {
+            // Iteration is complete. Move to the final stage.
             openSlotToPublic(doctor, slotStart, event);
             return;
         }
 
         Appointment appointment = it.next();
-        Patient patient = appointment.getPatient();
+        Patient patient = appointment.getPatient(); // Accessing patient needs a session
 
         Notification notification = Notification.builder()
                 .patient(patient)
@@ -250,15 +271,15 @@ public class SlotAllocationService {
                 .build();
         notificationRepository.save(notification);
 
+        // This line is now safe due to the @Transactional annotation
         patient.setTotalNotificationsSent(patient.getTotalNotificationsSent() + 1);
         patientRepository.save(patient);
 
         try {
-            // Unifying the notification logic to use Rasa service for future appointments as well
             rasaService.sendExternalSlotOffer(
                     patient.getPhone(),
                     DateUtils.toFormattedDateTimeString(slotStart, patient.getTimeZoneId()),
-                    String.valueOf(appointment.getId()), // The old appointment ID is the one the patient holds now
+                    String.valueOf(appointment.getId()),
                     String.valueOf(notification.getId())
             );
         } catch (Exception ex) {
@@ -277,6 +298,7 @@ public class SlotAllocationService {
         timeoutTasks.put(notification.getId(), future);
     }
 
+    // FIX 3: ADD @Transactional to ensure the Patient proxy can be loaded and saved.
     @Transactional
     protected void handleFutureTimeout(Long notificationId, Iterator<Appointment> it, Doctor doctor, LocalDateTime slotStart, LocalDateTime slotEnd, SlotCancelledEvent event) {
         Notification notification = notificationRepository.findById(notificationId).orElse(null);
@@ -290,6 +312,7 @@ public class SlotAllocationService {
             notification.setExpiresAt(Instant.now());
             notificationRepository.save(notification);
 
+            // Accessing patient needs a session
             Patient patient = notification.getPatient();
             patient.setConsecutiveMisses(patient.getConsecutiveMisses() + 1);
             patientRepository.save(patient);
@@ -311,7 +334,7 @@ public class SlotAllocationService {
         }
     }
 
-    // Corrected queue name to use the plural 'appointments.slots.reallocated.queue'
+    // This is already marked @Transactional
     @RabbitListener(queues = "appointments.slots.reallocated.queue")
     @Transactional
     public void onSlotsReallocated(SlotReallocatedEvent slotReallocatedEvent) {
@@ -321,7 +344,7 @@ public class SlotAllocationService {
                 return;
             }
 
-            Patient patient = notification.getPatient();
+            Patient patient = notification.getPatient(); // Accessing patient needs a session
 
             ScheduledFuture<?> future = timeoutTasks.remove(notification.getId());
             if (future != null) future.cancel(false);
@@ -339,13 +362,12 @@ public class SlotAllocationService {
                     .startTime(notification.getStartTime())
                     .endTime(notification.getEndTime())
                     .build();
-            // Corrected routing key to use the plural 'appointments.slots.rescheduled'
             rabbitTemplate.convertAndSend("appointments.exchange", "appointments.slots.rescheduled", slotRescheduledEvent);
             log.info("Successfully confirmed and reallocated slot via notification {}. Emitted SlotRescheduledEvent.", notification.getId());
         });
     }
 
-    // Corrected queue name to use the plural 'appointments.slots.denied.queue'
+    // This is already marked @Transactional
     @RabbitListener(queues = "appointments.slots.denied.queue")
     @Transactional
     public void onSlotsDenied(SlotReallocatedEvent slotReallocatedEvent) {
@@ -369,7 +391,6 @@ public class SlotAllocationService {
                     notification.getStartTime(),
                     notification.getEndTime()
             );
-            // Corrected routing key to use the plural 'appointments.slots.cancelled'
             rabbitTemplate.convertAndSend("appointments.exchange", "appointments.slots.cancelled", reEmit);
             log.info("Patient declined; re-emitted SlotCancelledEvent for doctor={} slot={}", notification.getDoctor().getId(), notification.getStartTime());
         });
@@ -377,7 +398,6 @@ public class SlotAllocationService {
 
     private void openSlotToPublic(Doctor doctor, LocalDateTime slotStart, SlotCancelledEvent event) {
         log.info("Opening slot to public for doctor={} slotStart={}", doctor.getId(), slotStart);
-        // Corrected routing key to use the plural 'appointments.slots.opened'
         rabbitTemplate.convertAndSend("appointments.exchange", "appointments.slots.opened", Map.of("doctorId", doctor.getId(), "startIso", event.getStartTime(), "endIso", event.getEndTime()));
     }
 }

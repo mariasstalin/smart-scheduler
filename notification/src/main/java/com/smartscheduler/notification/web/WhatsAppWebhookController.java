@@ -36,9 +36,9 @@ public class WhatsAppWebhookController {
 
         try {
             if(Objects.nonNull(buttonId)) {
-                if("reschedule_yes".equalsIgnoreCase(buttonId)) {
+                if("confirm_slot_offer".equalsIgnoreCase(buttonId)) {
                     message = "/confirm_slot_offer";
-                } else if("reschedule_no".equalsIgnoreCase(buttonId)) {
+                } else if("deny_slot_offer".equalsIgnoreCase(buttonId)) {
                     message = "/deny_slot_offer";
                 } else if(buttonId.startsWith("provide_selection")) {
                     message = "/" + buttonId;
