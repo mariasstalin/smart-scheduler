@@ -40,6 +40,8 @@ public class WhatsAppWebhookController {
                     message = "/confirm_slot_offer";
                 } else if("reschedule_no".equalsIgnoreCase(buttonId)) {
                     message = "/deny_slot_offer";
+                } else if(buttonId.startsWith("provide_selection")) {
+                    message = "/" + buttonId;
                 }
             }
 

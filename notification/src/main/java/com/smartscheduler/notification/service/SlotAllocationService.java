@@ -71,13 +71,13 @@ public class SlotAllocationService {
         LocalDate slotDateUtc = slotStart.toLocalDate();
         log.info("Processing cancelled slot for doctor={}, slotStart={} (UTC date={})", doctor.getId(), slotStart, slotDateUtc);
 
-        List<Waitlist> candidates = waitlistRepository.findByDoctorAndActiveTrue(doctor)
+        List<Waitlist> candidates = new ArrayList<>(waitlistRepository.findByDoctorAndActiveTrueWithPreferredDates(doctor)
                 .stream()
                 .filter(w -> preferredDatesContainUtcDate(w, slotDateUtc))
-                .toList();
+                .toList());
 
         Instant now = Instant.now();
-        for (Waitlist w : waitlistRepository.findByDoctorAndActiveFalse(doctor)) {
+        for (Waitlist w : waitlistRepository.findByDoctorAndActiveFalseWithPreferredDates(doctor)) {
             if (w.getOptOutExpiry() != null && w.getOptOutExpiry().isBefore(now)) {
                 w.setActive(true);
                 w.setConsecutiveMisses(0);
@@ -98,7 +98,7 @@ public class SlotAllocationService {
             return;
         }
 
-        List<Appointment> futureAppointments = appointmentRepository.findByDoctorAndStartTimeAfterAndStatus(doctor, slotStart, Appointment.Status.UPCOMING);
+        List<Appointment> futureAppointments = appointmentRepository.findByDoctorAndStartTimeAfterAndStatus(doctor, slotStart.toInstant(ZoneOffset.UTC), Appointment.Status.UPCOMING);
         futureAppointments.sort(Comparator.comparing(Appointment::getStartTime));
         if (!futureAppointments.isEmpty()) {
             notifyFutureSequentially(futureAppointments.iterator(), doctor, slotStart, slotEnd, event);
@@ -211,7 +211,7 @@ public class SlotAllocationService {
             patientRepository.save(patient);
 
             if (patient.getConsecutiveMisses() >= notificationProperties.getMaxConsecutiveMisses()) {
-                List<Waitlist> userWaitlists = waitlistRepository.findByPatientAndActiveTrue(patient);
+                List<Waitlist> userWaitlists = waitlistRepository.findByPatientAndActiveTrueWithPreferredDates(patient);
                 Instant optOutExpiry = Instant.now().plus(notificationProperties.getOptOutDuration());
                 for (Waitlist w : userWaitlists) {
                     w.setActive(false);
@@ -295,7 +295,7 @@ public class SlotAllocationService {
             patientRepository.save(patient);
 
             if (patient.getConsecutiveMisses() >= notificationProperties.getMaxConsecutiveMisses()) {
-                List<Waitlist> userWaitlists = waitlistRepository.findByPatientAndActiveTrue(patient);
+                List<Waitlist> userWaitlists = waitlistRepository.findByPatientAndActiveTrueWithPreferredDates(patient);
                 Instant optOutExpiry = Instant.now().plus(notificationProperties.getOptOutDuration());
                 for (Waitlist w : userWaitlists) {
                     w.setActive(false);

@@ -79,8 +79,9 @@ public final class DateUtils {
     }
 
     public static String toFormattedDateTimeString(LocalDateTime localDateTime, ZoneId zoneId) {
-        ZonedDateTime zonedSlotTime = localDateTime.atZone(zoneId);
-        return zonedSlotTime.format(RASA_DATE_TIME_FORMATTER);
+        ZonedDateTime utcZonedTime = localDateTime.atZone(ZoneId.of("UTC"));
+        ZonedDateTime convertedTime = utcZonedTime.withZoneSameInstant(zoneId);
+        return convertedTime.format(RASA_DATE_TIME_FORMATTER);
     }
 
     public static Instant toInstantDate(String dateStr, ZoneId zoneId) {

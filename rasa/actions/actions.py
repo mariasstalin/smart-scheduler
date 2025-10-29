@@ -8,7 +8,7 @@ from rasa_sdk.events import SlotSet, ActiveLoop, FollowupAction, EventType
 import json
 
 # --- CONFIGURATION ---
-BASE_URL = "http://localhost:8080/api/v1/appointment/external"
+BASE_URL = "http://localhost:8080/appointment/external"
 BUSINESS_HOURS_START = 10
 BUSINESS_HOURS_END = 18
 
@@ -126,36 +126,61 @@ class ActionListAppointmentsWithButtons(Action):
         whatsapp_number = tracker.sender_id
 
         if not whatsapp_number:
-            dispatcher.utter_message(text="I couldn't identify your account. Please ensure your chat identifier is correct.")
+            dispatcher.utter_message(text="🛑 <b>ERROR:</b> I couldn't identify your account. Please ensure your chat identifier is correct.")
             return [SlotSet("appointments_list", None), SlotSet("appointment_action_type", None)]
 
         # --- API CALL ---
         appointments = api_client.get_user_appointments(whatsapp_number)
+        # --- END API CALL ---
 
         latest_intent = tracker.latest_message.get("intent", {}).get("name")
 
+        # 1. Determine Context and Set Header
         if latest_intent == "reschedule_appointment":
             context = "reschedule"
-            title_text = "Please select the appointment you want to **reschedule**:"
+            header_emoji = "🔄"
+            # Using <b> and <br> for guaranteed rendering
+            title_text = f"{header_emoji} <b>APPOINTMENT RESCHEDULE</b><br><br>Please choose the appointment you want to modify from the list below:"
         elif latest_intent == "cancel_appointment":
             context = "cancel"
-            title_text = "Please select the appointment you want to **cancel**:"
+            header_emoji = "❌"
+            # Using <b> and <br> for guaranteed rendering
+            title_text = f"{header_emoji} <b>APPOINTMENT CANCELLATION</b><br><br>Please choose the appointment you want to modify from the list below:"
         else:
-            dispatcher.utter_message(text="I'm not sure why you need a list of appointments. Please specify if you want to reschedule or cancel.")
+            dispatcher.utter_message(text="⚠️ <b>ATTENTION:</b> I'm not sure why you need a list of appointments. Please specify if you want to reschedule or cancel.")
             return [SlotSet("appointments_list", None), SlotSet("appointment_action_type", None)]
 
         if not appointments:
-            dispatcher.utter_message(text=f"No upcoming appointments found to {context}.")
+            dispatcher.utter_message(text=f"😌 No upcoming appointments found to {context}.")
             return [SlotSet("appointments_list", None), SlotSet("appointment_action_type", None)]
 
         buttons = []
-        msg = f"{title_text}\n"
+        # Initialize message with the structured title and add vertical space using <br>
+        msg = f"{title_text}<br><br>"
 
+        # 2. Loop to build detailed message body and simplified buttons
         for idx, appt in enumerate(appointments, start=1):
-            msg += f"**{idx}️⃣** {appt.get('service', 'Unknown Service')} — {appt.get('doctor', 'Unknown Doctor')} — {appt.get('current_time', 'Unknown Time')}\n"
+            service = appt.get('service', 'Unknown Service')
+            doctor = appt.get('doctor', 'Unknown Doctor')
+            current_time = appt.get('currentTime', 'Unknown Time')
+
+            # Detailed List Item Formatting:
+            # Using <b> for bold, (idx) for selection number, and &nbsp; for indentation
+            msg += f"<b>({idx}) {service}</b><br>"
+            msg += f"&nbsp;&nbsp;&nbsp;• Doctor: {doctor}<br>"
+            msg += f"&nbsp;&nbsp;&nbsp;• Date/Time: {current_time}<br>"
+            msg += "<br>" # Extra <br> for spacing between appointments
+
+            # Simplified Button Title Logic
+            time_only = current_time.split(' ')[1] if ' ' in current_time else 'Time'
+            button_title = f"{idx}. {service} - {time_only}"
+
+            # Fallback for long titles
+            if len(button_title) > 20:
+                button_title = f"{idx}. {service}"
 
             buttons.append({
-                "title": f"{appt.get('service', 'Appointment')} on {appt.get('current_time', 'Unknown Time')}",
+                "title": button_title,
                 "payload": f'/provide_selection{{"appointment_selection": "{idx}"}}'
             })
 
@@ -199,7 +224,7 @@ class ValidateRescheduleForm(FormValidationAction):
         appointments = tracker.get_slot("appointments_list")
 
         if not appointments:
-            dispatcher.utter_message(text="No appointments found. Please start the reschedule process again.")
+            dispatcher.utter_message(text="⚠️ <b>ATTENTION:</b> No appointments found to reschedule. Please start the process again.")
             return {"appointment_selection": None, "appointment_id": None, "service": None, "requested_slot": None, "appointments_list": None}
 
         try:
@@ -209,7 +234,7 @@ class ValidateRescheduleForm(FormValidationAction):
             else:
                 raise ValueError
         except (ValueError, TypeError):
-            dispatcher.utter_message(text="Invalid selection. Please use the buttons or reply with the number of the appointment you want to reschedule.")
+            dispatcher.utter_message(text="❌ <b>INVALID SELECTION:</b> Please use the buttons or reply with the <b>number</b> of the appointment you want to reschedule.")
             return {"appointment_selection": None}
 
         return {
@@ -229,14 +254,14 @@ class ValidateRescheduleForm(FormValidationAction):
                 selected_time = suggested_slots[idx]
                 return {"datetime": selected_time, "suggested_slots": None}
             else:
-                dispatcher.utter_message(text="Invalid selection. Please pick one of the suggested slots (number).")
+                dispatcher.utter_message(text="❌ <b>INVALID SELECTION:</b> Please pick one of the suggested slots by replying with the corresponding <b>number</b>.")
                 return {"datetime": None}
 
         time_entity = next(tracker.get_latest_entity_values("time"), None)
 
         latest_intent = tracker.latest_message.get("intent", {}).get("name")
         if latest_intent in ["deny", "goodbye"]:
-            dispatcher.utter_message(text="Understood. We'll stop the rescheduling process for now.")
+            dispatcher.utter_message(text="👍 <b>Understood.</b> We'll stop the rescheduling process for now.")
             return {"datetime": None, "suggested_slots": None, "requested_slot": None}
 
         if not time_entity:
@@ -245,13 +270,13 @@ class ValidateRescheduleForm(FormValidationAction):
         try:
             dt = parser.parse(time_entity)
         except Exception:
-            dispatcher.utter_message(text="Invalid date/time format. Please try again.")
+            dispatcher.utter_message(text="📅 <b>INVALID FORMAT:</b> The date/time format is invalid. Please try again, e.g., 'next Tuesday at 3 PM'.")
             return {"datetime": None}
 
         if not is_valid_time(dt):
             slots = next_available_slots()
-            list_msg = "\n".join([f"{idx}️⃣ {s}" for idx, s in enumerate(slots, start=1)])
-            msg = f"Sorry, that time is unavailable or in the past. Here are the next available slots:\n{list_msg}\nPlease reply with one of the suggested times (number) or try a new time."
+            list_msg = "<br>".join([f"<b>({idx})</b> {s}" for idx, s in enumerate(slots, start=1)])
+            msg = f"⚠️ <b>SLOT UNAVAILABLE:</b> Sorry, that time is unavailable or in the past.<br><br>Here are the <b>next available slots</b>:<br>{list_msg}<br><br>Please reply with the <b>number</b> of a suggested time or try a new time."
             dispatcher.utter_message(text=msg)
 
             return {"datetime": None, "suggested_slots": slots}
@@ -277,13 +302,13 @@ class ActionSubmitRescheduleForm(Action):
 
             if not reschedule_success:
                 if reason == "SLOT_TAKEN":
-                    dispatcher.utter_message(text="I'm sorry, that specific time has just been taken. Please try to select a new time.")
+                    dispatcher.utter_message(text="⚠️ <b>SLOT TAKEN:</b> I'm sorry, that specific time has just been taken by another patient. Please try to select a new time.")
                 else:
-                    dispatcher.utter_message(text="Something went wrong with the rescheduling process. Please contact support.")
+                    dispatcher.utter_message(text="🛑 <b>SYSTEM ERROR:</b> Something went wrong with the rescheduling process. Please contact support for immediate assistance.")
                 return events
 
             dispatcher.utter_message(
-                text=f"✅ Your {service_name} appointment has been rescheduled to **{datetime_slot}**."
+                text=f"✅ <b>RESCHEDULED!</b> Your <b>{service_name}</b> appointment has been successfully moved to <b>{datetime_slot}</b>. Thank you!"
             )
 
         # Clear all slots related to the flow
@@ -309,29 +334,37 @@ class ActionSetSlotOfferDetails(Action):
         return "action_set_slot_offer_details"
 
     async def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
-        new_slot = tracker.get_slot("new_slot_datetime")
-        old_id = tracker.get_slot("old_appointment_id")
-        unique_offer_id = tracker.get_slot("slot_offer_id")
+        events = []
+
+        latest_message_metadata = tracker.latest_message.get("metadata", {})
+
+        new_slot = latest_message_metadata.get("new_slot_datetime")
+        old_id = latest_message_metadata.get("old_appointment_id")
+        unique_offer_id = latest_message_metadata.get("slot_offer_id")
 
         if not (new_slot and old_id and unique_offer_id):
-            dispatcher.utter_message(text="Error: Missing external offer details. Cannot process.")
-            return [SlotSet("new_slot_datetime", None), SlotSet("old_appointment_id", None), SlotSet("slot_offer_id", None)]
+            dispatcher.utter_message(text="🛑 <b>SYSTEM ERROR:</b> Missing external offer details in message metadata. Cannot process this request.")
+            return events
 
-        # --- API CALL to lookup original appointment details ---
-        appt_details = api_client.lookup_appointment_details(old_id)
-        # --- END API CALL ---
+        try:
+            appt_details = api_client.lookup_appointment_details(old_id)
+        except Exception:
+            appt_details = None
 
-        old_time = appt_details.get("current_time") if appt_details else "an unknown time"
+        old_time = appt_details.get("currentTime") if appt_details else "an unknown time"
         service_name = appt_details.get("service") if appt_details else "an unknown service"
 
-        events = [
-            SlotSet("old_appointment_id", old_id),
-            SlotSet("slot_offer_id", unique_offer_id),
+        events.append(SlotSet("new_slot_datetime", new_slot))
+        events.append(SlotSet("old_appointment_id", old_id))
+        events.append(SlotSet("slot_offer_id", unique_offer_id))
+
+        events.extend([
             SlotSet("old_appointment_datetime", old_time),
             SlotSet("old_service_name", service_name),
             ActiveLoop("slot_offer_confirmation_form"),
             FollowupAction("utter_ask_slot_confirmation")
-        ]
+        ])
+
         return events
 
 class ActionConfirmSlotOffer(Action):
@@ -348,7 +381,7 @@ class ActionConfirmSlotOffer(Action):
         events: List[EventType] = [ActiveLoop(None)]
 
         if not old_id or not new_datetime or not slot_offer_id:
-            dispatcher.utter_message(text="I can't complete the confirmation as the required information is missing. Please contact staff.")
+            dispatcher.utter_message(text="🛑 <b>SYSTEM ERROR:</b> I can't complete the confirmation as the required information is missing. Please contact staff.")
             events.append(FollowupAction("utter_goodbye"))
             return events
 
@@ -358,16 +391,16 @@ class ActionConfirmSlotOffer(Action):
 
         if reschedule_success:
             confirmation_message = (
-                f"Great! Your appointment (originally {old_time}) has been successfully "
-                f"moved to **{new_datetime}**. The system has been updated."
+                f"🎉 <b>CONFIRMED!</b> Your appointment (originally <b>{old_time}</b>) has been successfully "
+                f"moved to <b>{new_datetime}</b>. The system has been updated."
             )
             dispatcher.utter_message(text=confirmation_message)
         else:
             if reason == "SLOT_TAKEN":
-                dispatcher.utter_message(text="I'm sorry, that specific time has just been taken. We will search for the next best time for you.")
+                dispatcher.utter_message(text="⚠️ <b>SLOT TAKEN:</b> I'm sorry, that specific time has just been taken. We will search for the next best time for you.")
             else:
                 dispatcher.utter_message(
-                    text="I apologize, there was an issue updating your slot due to a system error. A staff member will contact you shortly."
+                    text="🛑 <b>SYSTEM ERROR:</b> I apologize, there was an issue updating your slot. A staff member will contact you shortly."
                 )
 
         events.extend([
@@ -392,7 +425,7 @@ class ActionDenySlotOffer(Action):
         # --- END API CALL ---
 
         dispatcher.utter_message(
-            text="Understood. We will make this slot available for another patient. "
+            text="👍 <b>Understood.</b> We will make this slot available for another patient. "
                  "We'll notify you if another opening occurs that suits you."
         )
 
@@ -418,7 +451,7 @@ class ActionCancelAppointment(Action):
         context = tracker.get_slot("appointment_action_type")
 
         if context != "cancel":
-            dispatcher.utter_message(text="I can't perform cancellation with the current context.")
+            dispatcher.utter_message(text="⚠️ <b>CONTEXT ERROR:</b> I can't perform cancellation with the current chat context.")
             return [SlotSet("appointment_action_type", None), SlotSet("appointments_list", None)]
 
         # --- Get selection from the latest message payload ---
@@ -434,20 +467,20 @@ class ActionCancelAppointment(Action):
                 selection = None
 
         if not appointments or not selection:
-            dispatcher.utter_message(text="Sorry, I lost the appointment context. Please try starting the cancellation again.")
+            dispatcher.utter_message(text="⚠️ <b>CONTEXT LOST:</b> Sorry, I lost the appointment context. Please try starting the cancellation process again.")
             return [SlotSet("appointment_action_type", None), SlotSet("appointments_list", None), SlotSet("appointment_selection", None)]
 
         try:
             idx = int(selection) - 1
             if 0 <= idx < len(appointments):
                 selected_appt = appointments[idx]
-                appointment_id = selected_appt.get("appointment_id")
+                appointment_id = selected_appt.get("appointmentId")
                 service_name = selected_appt.get("service")
             else:
                 raise ValueError("Selection index out of bounds")
 
         except (ValueError, IndexError):
-            dispatcher.utter_message(text="Invalid selection. Please try again.")
+            dispatcher.utter_message(text="❌ <b>INVALID SELECTION:</b> Please try again with a valid appointment number.")
             return []
 
         # --- API CALL ---
@@ -456,13 +489,12 @@ class ActionCancelAppointment(Action):
 
         if not cancellation_success:
             dispatcher.utter_message(
-                text="I apologize, there was an issue attempting to cancel your appointment. "
-                     "A staff member has been alerted and will call you to confirm cancellation."
+                text="🛑 <b>SYSTEM ERROR:</b> I apologize, there was an issue attempting to cancel your appointment. A staff member has been alerted and will call you to confirm cancellation."
             )
             return []
 
         dispatcher.utter_message(
-            text=f"✅ Your {service_name} appointment (ID: {appointment_id}) has been successfully **cancelled**."
+            text=f"✅ <b>CANCELLED!</b> Your <b>{service_name}</b> appointment (ID: {appointment_id}) has been successfully cancelled."
         )
 
         # Clear all related slots

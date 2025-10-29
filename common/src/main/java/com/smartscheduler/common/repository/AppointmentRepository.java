@@ -14,7 +14,7 @@ import java.util.Optional;
 
 @Repository
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
-    List<Appointment> findByDoctorAndStartTimeAfterAndStatus(Doctor doctor, LocalDateTime after, Appointment.Status status);
+    List<Appointment> findByDoctorAndStartTimeAfterAndStatus(Doctor doctor, Instant after, Appointment.Status status);
 
     @Query("SELECT a FROM Appointment a WHERE a.doctor.id = :doctorId AND a.status = :status AND ((a.startTime < :end AND a.endTime > :start))")
     List<Appointment> findConflictingAppointments(@Param("doctorId") Long doctorId, @Param("start") Instant start, @Param("end") Instant end, @Param("status") Appointment.Status status);

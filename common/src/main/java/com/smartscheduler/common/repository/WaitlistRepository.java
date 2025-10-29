@@ -12,11 +12,21 @@ import org.springframework.stereotype.Repository;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface WaitlistRepository extends JpaRepository<Waitlist, Long> {
-    List<Waitlist> findByDoctorAndActiveTrue(Doctor doctor);
-    List<Waitlist> findByDoctorAndActiveFalse(Doctor doctor);
-    List<Waitlist> findByPatientAndActiveTrue(Patient patient);
+
+    @Query("SELECT w FROM Waitlist w JOIN FETCH w.preferredDates WHERE w.doctor = :doctor AND w.active = true")
+    List<Waitlist> findByDoctorAndActiveTrueWithPreferredDates(@Param("doctor") Doctor doctor);
+
+    @Query("SELECT w FROM Waitlist w JOIN FETCH w.preferredDates WHERE w.doctor = :doctor AND w.active = false")
+    List<Waitlist> findByDoctorAndActiveFalseWithPreferredDates(@Param("doctor") Doctor doctor);
+
+    //List<Waitlist> findByPatientAndActiveTrue(Patient patient);
+
+    @Query("SELECT w FROM Waitlist w JOIN FETCH w.preferredDates WHERE w.patient = :patient AND w.active = true")
+    List<Waitlist> findByPatientAndActiveTrueWithPreferredDates(@Param("patient") Patient patient);
+
 }
 
 
