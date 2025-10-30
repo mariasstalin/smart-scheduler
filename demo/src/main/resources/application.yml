@@ -9,9 +9,6 @@ spring:
     name: demo
   thymeleaf:
     cache: false
-  redis:
-    host: localhost
-    port: 6379
 
 management:
   endpoints:

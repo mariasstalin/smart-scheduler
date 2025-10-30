@@ -29,7 +29,9 @@ public class ChatController {
 
     @Value("${message.system-phone}")
     private String systemPhone;
-    private static final String WHATSAPP_WEBHOOK_URL = "http://localhost:8080/notification/webhook/whatsapp";
+
+    @Value("${notification.base-url}/notification/webhook/whatsapp")
+    private String whatsappWebhookUrl;
 
     @Autowired
     private RestTemplate restTemplate;
@@ -78,7 +80,7 @@ public class ChatController {
             HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(formData, headers);
 
             // Use exchange or postForLocation, which supports the HttpEntity
-            restTemplate.postForLocation(WHATSAPP_WEBHOOK_URL, request);
+            restTemplate.postForLocation(whatsappWebhookUrl, request);
 
         } catch (Exception e) {
             System.err.println("Error processing incoming chat message: " + e.getMessage());

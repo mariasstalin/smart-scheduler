@@ -1,13 +1,25 @@
-# ---- Build Stage ----
+
 FROM maven:3.9.4-eclipse-temurin-21 AS build
 WORKDIR /app
-COPY pom.xml .
-COPY src ./src
-RUN mvn -B -DskipTests package
 
-# ---- Runtime Stage ----
+COPY pom.xml ./pom.xml
+
+COPY common ./common
+COPY notification ./notification
+
+RUN mvn -f pom.xml -N install
+
+RUN mvn -f common/pom.xml -B -DskipTests clean install
+
+RUN mvn -f notification/pom.xml -B -DskipTests clean package
+
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
+
+RUN apk add --no-cache curl
+
+COPY --from=build /app/notification/target/*.jar app.jar
+
 EXPOSE 8083
-ENTRYPOINT ["java","-jar","/app/app.jar","--spring.profiles.active=prod"]
+USER root
+ENTRYPOINT ["java", "-jar", "app.jar", "--spring.profiles.active=prod"]

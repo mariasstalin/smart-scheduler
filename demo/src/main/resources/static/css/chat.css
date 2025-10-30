@@ -58,19 +58,6 @@ body {
     white-space: normal;
 }
 
-/* Bubble styling */
-.message .bubble {
-    max-width: 100%;
-    overflow-wrap: break-word;
-    word-break: break-word;
-    white-space: normal;
-    display: inline-block;
-    padding: 10px 14px;
-    border-radius: 15px;
-    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
-    color: #000; /* Ensure text is black */
-}
-
 /* System (bot) messages - left */
 .from-system {
     align-self: flex-start;
@@ -190,4 +177,39 @@ body {
 
 .interactive-button:active {
     background-color: #0c9444;
+}
+
+/* Bubble styling - Ensure relative positioning and adequate bottom padding for timestamp */
+.message .bubble {
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+    display: inline-block;
+
+    position: relative;
+    /* Increased padding: ensures the text content doesn't overlap the absolutely positioned timestamp */
+    padding: 10px 14px 25px 14px;
+
+    border-radius: 15px;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+    color: #000;
+}
+
+/* Timestamp styling - FIXING CONTRAST */
+.timestamp {
+    position: absolute;
+    bottom: 5px;
+    right: 8px;
+
+    font-size: 0.75em;
+    /* ⭐ CORRECTION for System/Bot (White Bubble): Use a strong, non-transparent dark color ⭐ */
+    color: #777777; /* Darker, clearly visible gray */
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.from-user .timestamp {
+    /* ⭐ CORRECTION for User (Light Green Bubble): Use a strong dark color for contrast ⭐ */
+    color: #444444; /* Darker gray for clear visibility on the light green */
 }

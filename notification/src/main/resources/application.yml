@@ -12,13 +12,13 @@ management:
         include: health,info
 
 rasa:
-  url: http://localhost:5005
+  url: http://rasa:5005
 
 notification:
   scheduling:
-    response-window-minutes: 2
+    response-window-minutes: 3
     max-consecutive-misses: 3
-    opt-out-duration: PT24H
+    opt-out-duration: PT15M
 
   patient:
     priority:
@@ -31,7 +31,3 @@ notification:
         response-rate-weight: 20.0
         consecutive-miss-penalty: 5.0
         consecutive-miss-max-penalty: 15.0
-
-message:
-  provider: demo
-  system-phone: 919999999999

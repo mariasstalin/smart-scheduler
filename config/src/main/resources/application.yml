@@ -7,10 +7,10 @@ spring:
 
 zoho:
   api:
-    token-base-url: ${ZOHO_TOKEN_BASE_URL:https://accounts.zoho.in}
-    client-id: ${ZOHO_CLIENT_ID:1000.RMOOGMGPQII9GYSJVD7ZY3S8PJWF4E}
-    client-secret: ${ZOHO_CLIENT_SECRET:05fc217a0cbb4a93dd7e0c8cccf15cac43b025aaf2}
-    refresh-token: ${ZOHO_REFRESH_TOKEN:1000.4ee1140006fbd1c2f3d9c4d6de2848bf.2708d56fc0a39cc9476ab078c360b3d6}
+    token-base-url: ${ZOHO_TOKEN_BASE_URL}
+    client-id: ${ZOHO_CLIENT_ID}
+    client-secret: ${ZOHO_CLIENT_SECRET}
+    refresh-token: ${ZOHO_REFRESH_TOKEN}
 
 logging:
   level:

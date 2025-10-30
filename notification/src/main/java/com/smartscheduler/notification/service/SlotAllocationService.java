@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional; // Ensure this is imported
 
 import java.time.*;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -106,17 +107,26 @@ public class SlotAllocationService {
         }
         log.info("No suitable candidates on the waitlist. Checking future appointments.");
 
+        Instant slotStartInstant = slotStart.toInstant(ZoneOffset.UTC);
+        Instant futureSearchLimit = slotStartInstant.plus(3, ChronoUnit.DAYS);
+        log.info("Limiting future appointment search to: {}", futureSearchLimit);
 
         // 4. Stage 2: Notify Future Appointments (only if waitlist is exhausted)
-        List<Appointment> futureAppointments = appointmentRepository.findByDoctorAndStartTimeAfterAndStatus(doctor, slotStart.toInstant(ZoneOffset.UTC), Appointment.Status.UPCOMING);
+        // You will need a new repository method that accepts two Instant parameters
+        List<Appointment> futureAppointments = appointmentRepository.findByDoctorAndStartTimeAfterAndStartTimeBeforeAndStatus(
+                doctor,
+                slotStartInstant,
+                futureSearchLimit,
+                Appointment.Status.UPCOMING
+        );
         futureAppointments.sort(Comparator.comparing(Appointment::getStartTime));
+
         if (!futureAppointments.isEmpty()) {
             log.info("Starting sequential future appointment notification for {} patients.", futureAppointments.size());
             notifyFutureSequentially(futureAppointments.iterator(), doctor, slotStart, slotEnd, event);
             return;
         }
         log.info("No suitable future appointments for earlier slot. Opening to public.");
-
 
         // 5. Stage 3: Open to Public (if both lists are exhausted)
         openSlotToPublic(doctor, slotStart, event);

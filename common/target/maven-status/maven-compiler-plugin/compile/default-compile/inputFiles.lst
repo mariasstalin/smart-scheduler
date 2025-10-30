@@ -1,4 +1,7 @@
+D:\projects\smart-scheduler\common\src\main\java\com\smartscheduler\common\config\RestClientConfig.java
+D:\projects\smart-scheduler\common\src\main\java\com\smartscheduler\common\config\ZohoTokenConfig.java
 D:\projects\smart-scheduler\common\src\main\java\com\smartscheduler\common\dto\AppointmentMessage.java
+D:\projects\smart-scheduler\common\src\main\java\com\smartscheduler\common\dto\ZohoToken.java
 D:\projects\smart-scheduler\common\src\main\java\com\smartscheduler\common\entity\Appointment.java
 D:\projects\smart-scheduler\common\src\main\java\com\smartscheduler\common\entity\Doctor.java
 D:\projects\smart-scheduler\common\src\main\java\com\smartscheduler\common\entity\Notification.java
@@ -7,9 +10,10 @@ D:\projects\smart-scheduler\common\src\main\java\com\smartscheduler\common\entit
 D:\projects\smart-scheduler\common\src\main\java\com\smartscheduler\common\entity\SlotCancellation.java
 D:\projects\smart-scheduler\common\src\main\java\com\smartscheduler\common\entity\Waitlist.java
 D:\projects\smart-scheduler\common\src\main\java\com\smartscheduler\common\entity\WaitlistPreferredDate.java
-D:\projects\smart-scheduler\common\src\main\java\com\smartscheduler\common\event\PatientResponseEvent.java
 D:\projects\smart-scheduler\common\src\main\java\com\smartscheduler\common\event\SlotBookedEvent.java
 D:\projects\smart-scheduler\common\src\main\java\com\smartscheduler\common\event\SlotCancelledEvent.java
+D:\projects\smart-scheduler\common\src\main\java\com\smartscheduler\common\event\SlotDeniedEvent.java
+D:\projects\smart-scheduler\common\src\main\java\com\smartscheduler\common\event\SlotReallocatedEvent.java
 D:\projects\smart-scheduler\common\src\main\java\com\smartscheduler\common\event\SlotRescheduledEvent.java
 D:\projects\smart-scheduler\common\src\main\java\com\smartscheduler\common\repository\AppointmentRepository.java
 D:\projects\smart-scheduler\common\src\main\java\com\smartscheduler\common\repository\DoctorRepository.java
@@ -18,4 +22,5 @@ D:\projects\smart-scheduler\common\src\main\java\com\smartscheduler\common\repos
 D:\projects\smart-scheduler\common\src\main\java\com\smartscheduler\common\repository\RescheduleHistoryRepository.java
 D:\projects\smart-scheduler\common\src\main\java\com\smartscheduler\common\repository\SlotCancellationRepository.java
 D:\projects\smart-scheduler\common\src\main\java\com\smartscheduler\common\repository\WaitlistRepository.java
+D:\projects\smart-scheduler\common\src\main\java\com\smartscheduler\common\service\ZohoTokenService.java
 D:\projects\smart-scheduler\common\src\main\java\com\smartscheduler\common\util\DateUtils.java

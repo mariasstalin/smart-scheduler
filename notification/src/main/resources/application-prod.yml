@@ -15,9 +15,14 @@ spring:
   rabbitmq:
     host: rabbitmq
     port: 5672
-  redis:
-    host: redis
-    port: 6379
+    username: root
+    password: root
+  data:
+    redis:
+      host: redis
+      port: 6379
+      timeout: 2000ms
 
-messaging:
-  provider: twilio
+message:
+  provider: ${NOTIFICATION_MESSAGING_PROVIDER}
+  system-phone: ${NOTIFICATION_SYSTEM_PHONE}

@@ -19,9 +19,11 @@ services:
     volumes:
       - ./db/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -proot | grep 'mysqld is alive' > /dev/null || exit 1"]
       interval: 10s
+      timeout: 5s
       retries: 5
+      start_period: 10s
     profiles: ["local", "prod"]
     networks:
       - smart_scheduler_net
@@ -32,9 +34,11 @@ services:
     ports:
       - "6379:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG > /dev/null || exit 1"]
       interval: 10s
+      timeout: 5s
       retries: 5
+      start_period: 10s
     profiles: ["local", "prod"]
     networks:
       - smart_scheduler_net
@@ -51,45 +55,52 @@ services:
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     healthcheck:
-      test: ["CMD", "rabbitmqctl", "status"] # Simplified health check
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping | grep 'Ping succeeded' > /dev/null || exit 1"]
       interval: 10s
+      timeout: 5s
       retries: 5
+      start_period: 10s
     profiles: ["local", "prod"]
     networks:
       - smart_scheduler_net
 
-  # -------------------------
-  # Rasa and NLP Services
-  # -------------------------
   duckling:
-    image: rasa/duckling:latest
+    build:
+      context: ./duckling
+      dockerfile: Dockerfile
+    image: smart-scheduler-duckling
     container_name: duckling
     ports:
       - "8000:8000"
-    environment:
-      - TZ=Asia/Kolkata # Changed to common standard timezone ID for India
-    command: ["duckling-example-exe"]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8000/ | grep -q quack" ]
       interval: 10s
+      timeout: 5s
       retries: 5
-    profiles: ["local", "prod"]
+      start_period: 10s
+    profiles: [ "local", "prod" ]
     networks:
       - smart_scheduler_net
 
+    # -------------------------
+  # Rasa and NLP Services
+  # -------------------------
+
   rasa-actions:
     build:
-      context: ./rasa/actions
+      context: ./rasa-actions
       dockerfile: Dockerfile
     image: smart-scheduler-rasa-actions
     container_name: rasa-actions
     ports:
       - "5055:5055"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5055/health"] # Use a standard health endpoint
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:5055/health | grep -q 'ok'" ]
       interval: 10s
+      timeout: 5s
       retries: 5
-    profiles: ["local", "prod"]
+      start_period: 10s
+    profiles: [ "local", "prod" ]
     networks:
       - smart_scheduler_net
 
@@ -110,12 +121,12 @@ services:
         condition: service_healthy
       rasa-actions:
         condition: service_healthy
-      mysql:
-        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5005/status"] # Standard Rasa health check
+      test: ["CMD-SHELL", "curl -fs http://localhost:5005/ | grep 'Hello from Rasa' > /dev/null || exit 1"]
       interval: 10s
+      timeout: 5s
       retries: 5
+      start_period: 10s
     profiles: ["local", "prod"]
     networks:
       - smart_scheduler_net
@@ -131,55 +142,13 @@ services:
     container_name: light-gbm
     ports:
       - "5000:5000"
-#    healthcheck:
-#      test: ["CMD", "curl", "-f", "http://localhost:5055/health"] # Use a standard health endpoint
-#      interval: 10s
-#      retries: 5
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5000/health | grep '\"status\":\"ok\"' > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     profiles: ["local", "prod"]
-    networks:
-      - smart_scheduler_net
-
-
-  # -------------------------
-  # Spring Boot Microservices
-  # -------------------------
-  discovery:
-    build:
-      context: .
-      dockerfile: discovery/Dockerfile
-    image: smart-scheduler-discovery
-    container_name: discovery
-    ports:
-      - "8761:8761"
-    profiles: ["prod"]
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8761/actuator/health"] # Use actuator health check
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 60s
-    networks:
-      - smart_scheduler_net
-
-  config:
-    build:
-      context: .
-      dockerfile: config/Dockerfile
-    image: smart-scheduler-config
-    container_name: config
-    ports:
-      - "8888:8888"
-    depends_on:
-      discovery:
-        condition: service_healthy
-    profiles: ["prod"]
-    healthcheck:
-      # Checks the Spring Boot Actuator health endpoint
-      test: ["CMD", "wget", "-qO-", "http://localhost:8888/actuator/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 45s
     networks:
       - smart_scheduler_net
 
@@ -192,6 +161,56 @@ services:
     ports:
       - "4040:4040"
     profiles: ["prod"]
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -sf http://localhost:4040/api/tunnels | grep '\"public_url\"' > /dev/null || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - smart_scheduler_net
+
+  # -------------------------
+  # Spring Boot Microservices
+  # -------------------------
+  discovery:
+    build:
+      context: .
+      dockerfile: discovery/Dockerfile
+    image: smart-scheduler-discovery
+    container_name: discovery
+    ports:
+      - "8761:8761"
+    profiles: ["local", "prod"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8761/actuator/health | grep '\"status\":\"UP\"' > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - smart_scheduler_net
+
+  config:
+    build:
+      context: .
+      dockerfile: config/Dockerfile
+    image: smart-scheduler-config
+    container_name: config
+    ports:
+      - "8888:8888"
+    env_file:
+      - .env
+    depends_on:
+      discovery:
+        condition: service_healthy
+    profiles: ["local", "prod"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8888/actuator/health | grep '\"status\":\"UP\"' > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - smart_scheduler_net
 
@@ -203,16 +222,18 @@ services:
     container_name: gateway
     ports:
       - "8080:8080"
+    env_file:
+      - .env
     depends_on:
       discovery:
         condition: service_healthy
-    profiles: ["prod"]
+    profiles: ["local", "prod"]
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/actuator/health | grep '\"status\":\"UP\"' > /dev/null || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 45s
+      retries: 5
+      start_period: 10s
     networks:
       - smart_scheduler_net
 
@@ -224,20 +245,30 @@ services:
     container_name: appointment
     ports:
       - "8082:8082"
+    env_file:
+      - .env
     depends_on:
       mysql:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+      rasa:
+        condition: service_healthy
       discovery:
+        condition: service_healthy
+      config:
+        condition: service_healthy
+      gateway:
         condition: service_healthy
     profiles: ["prod"]
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8082/actuator/health"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:8082/actuator/health | grep '\"status\":\"UP\"' > /dev/null || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 45s
+      retries: 5
+      start_period: 10s
     networks:
       - smart_scheduler_net
 
@@ -249,20 +280,32 @@ services:
     container_name: notification
     ports:
       - "8083:8083"
+    env_file:
+      - .env
     depends_on:
       mysql:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+      rasa:
+        condition: service_healthy
+      light-gbm:
+        condition: service_healthy
       discovery:
+        condition: service_healthy
+      config:
+        condition: service_healthy
+      gateway:
         condition: service_healthy
     profiles: ["prod"]
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8083/actuator/health"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:8083/actuator/health | grep '\"status\":\"UP\"' > /dev/null || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 45s
+      retries: 5
+      start_period: 10s
     networks:
       - smart_scheduler_net
 

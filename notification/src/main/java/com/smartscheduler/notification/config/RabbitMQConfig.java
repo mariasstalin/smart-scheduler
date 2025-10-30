@@ -1,9 +1,6 @@
 package com.smartscheduler.notification.config;
 
-import org.springframework.amqp.core.Binding;
-import org.springframework.amqp.core.BindingBuilder;
-import org.springframework.amqp.core.DirectExchange;
-import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
@@ -16,6 +13,20 @@ public class RabbitMQConfig {
     @Bean
     public DirectExchange appointmentsExchange() {
         return new DirectExchange("appointments.exchange");
+    }
+
+    @Bean
+    public Queue appointmentsSlotsBookedQueue() {
+        // Corrected queue name: appointments.slots.booked.queue
+        return QueueBuilder.durable("appointments.slots.booked.queue").build();
+    }
+
+    @Bean
+    public Binding bookingBinding(Queue appointmentsSlotsBookedQueue, DirectExchange appointmentsExchange) {
+        // Routing key is correct: appointments.slots.booked
+        return BindingBuilder.bind(appointmentsSlotsBookedQueue)
+                .to(appointmentsExchange)
+                .with("appointments.slots.booked");
     }
 
     // --- 1. SLOTS CANCELLED (Input, triggers the cascade) ---
