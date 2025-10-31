@@ -20,10 +20,10 @@ services:
       - ./db/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -proot | grep 'mysqld is alive' > /dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
     profiles: ["local", "prod"]
     networks:
       - smart_scheduler_net
@@ -35,10 +35,10 @@ services:
       - "6379:6379"
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep PONG > /dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
     profiles: ["local", "prod"]
     networks:
       - smart_scheduler_net
@@ -56,10 +56,10 @@ services:
       - rabbitmq-data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping | grep 'Ping succeeded' > /dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
     profiles: ["local", "prod"]
     networks:
       - smart_scheduler_net
@@ -74,10 +74,10 @@ services:
       - "8000:8000"
     healthcheck:
       test: [ "CMD-SHELL", "wget -qO- http://localhost:8000/ | grep -q quack" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
     profiles: [ "local", "prod" ]
     networks:
       - smart_scheduler_net
@@ -96,10 +96,10 @@ services:
       - "5055:5055"
     healthcheck:
       test: [ "CMD-SHELL", "wget -qO- http://localhost:5055/health | grep -q 'ok'" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
     profiles: [ "local", "prod" ]
     networks:
       - smart_scheduler_net
@@ -123,10 +123,10 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -fs http://localhost:5005/ | grep 'Hello from Rasa' > /dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 180s
     profiles: ["local", "prod"]
     networks:
       - smart_scheduler_net
@@ -143,11 +143,11 @@ services:
     ports:
       - "5000:5000"
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:5000/health | grep '\"status\":\"ok\"' > /dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      test: ["CMD-SHELL", "curl -sf --max-time 5 http://localhost:5000/health | grep -q '\"ok\"' > /dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
     profiles: ["local", "prod"]
     networks:
       - smart_scheduler_net
@@ -162,11 +162,11 @@ services:
       - "4040:4040"
     profiles: ["prod"]
     healthcheck:
-      test: [ "CMD-SHELL", "curl -sf http://localhost:4040/api/tunnels | grep '\"public_url\"' > /dev/null || exit 1" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      test: [ "CMD-SHELL", "curl -sf --max-time 5 http://localhost:4040/api/tunnels | grep '\"public_url\"' > /dev/null || exit 1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
     networks:
       - smart_scheduler_net
 
@@ -183,11 +183,11 @@ services:
       - "8761:8761"
     profiles: ["local", "prod"]
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8761/actuator/health | grep '\"status\":\"UP\"' > /dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      test: ["CMD-SHELL", "curl -sf --max-time 5 http://localhost:8761/actuator/health | grep '\"UP\"' > /dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
     networks:
       - smart_scheduler_net
 
@@ -206,11 +206,11 @@ services:
         condition: service_healthy
     profiles: ["local", "prod"]
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8888/actuator/health | grep '\"status\":\"UP\"' > /dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      test: ["CMD-SHELL", "curl -sf --max-time 5 http://localhost:8888/actuator/health | grep '\"UP\"' > /dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
     networks:
       - smart_scheduler_net
 
@@ -229,11 +229,11 @@ services:
         condition: service_healthy
     profiles: ["local", "prod"]
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8080/actuator/health | grep '\"status\":\"UP\"' > /dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      test: ["CMD-SHELL", "curl -sf --max-time 5 http://localhost:8080/actuator/health | grep '\"UP\"' > /dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
     networks:
       - smart_scheduler_net
 
@@ -264,11 +264,11 @@ services:
         condition: service_healthy
     profiles: ["prod"]
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8082/actuator/health | grep '\"status\":\"UP\"' > /dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      test: ["CMD-SHELL", "curl -sf --max-time 5 http://localhost:8082/actuator/health | grep '\"UP\"' > /dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
     networks:
       - smart_scheduler_net
 
@@ -299,13 +299,40 @@ services:
         condition: service_healthy
       gateway:
         condition: service_healthy
+      appointment:
+        condition: service_healthy
     profiles: ["prod"]
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8083/actuator/health | grep '\"status\":\"UP\"' > /dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      test: ["CMD-SHELL", "curl -sf --max-time 5 http://localhost:8083/actuator/health | grep '\"UP\"' > /dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - smart_scheduler_net
+
+  demo:
+    build:
+      context: .
+      dockerfile: demo/Dockerfile
+    image: smart-scheduler-demo
+    container_name: demo
+    ports:
+      - "9999:9999"
+    env_file:
+      - .env
+    depends_on:
+      appointment:
+        condition: service_healthy
+      notification:
+        condition: service_healthy
+    profiles: [ "prod" ]
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -sf --max-time 5 http://localhost:9999/actuator/health | grep '\"UP\"' > /dev/null || exit 1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
     networks:
       - smart_scheduler_net
 
