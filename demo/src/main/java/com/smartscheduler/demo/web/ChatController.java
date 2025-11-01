@@ -30,7 +30,7 @@ public class ChatController {
     @Value("${message.system-phone}")
     private String systemPhone;
 
-    @Value("${notification.base-url}/notification/webhook/whatsapp")
+    @Value("${application.base-url}/notification/webhook/whatsapp")
     private String whatsappWebhookUrl;
 
     @Autowired

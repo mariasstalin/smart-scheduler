@@ -21,3 +21,11 @@ spring:
 message:
   provider: demo
   system-phone: 919999999999
+
+ai:
+  priority:
+    engine:
+      url: http://127.0.0.1:5000
+
+rasa:
+  url: http://localhost:5005

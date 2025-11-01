@@ -12,5 +12,5 @@ spring:
       port: 6379
       timeout: 2000ms
 
-notification:
+application:
   base-url: http://localhost:8080

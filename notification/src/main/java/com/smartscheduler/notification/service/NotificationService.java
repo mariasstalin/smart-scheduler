@@ -2,18 +2,13 @@ package com.smartscheduler.notification.service;
 
 import com.smartscheduler.common.entity.*;
 import com.smartscheduler.common.event.SlotBookedEvent;
-import com.smartscheduler.common.event.SlotCancelledEvent;
-import com.smartscheduler.common.event.SlotReallocatedEvent;
-import com.smartscheduler.common.event.SlotRescheduledEvent;
 import com.smartscheduler.common.repository.*;
-import com.smartscheduler.common.util.DateUtils;
 import com.smartscheduler.notification.config.NotificationProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.*;
 import java.util.*;
@@ -48,9 +43,6 @@ public class NotificationService {
 
     @Autowired
     private RasaService rasaService;
-
-    @Autowired
-    private PriorityCalculator priorityService;
 
     @Autowired
     private NotificationProperties notificationProperties;

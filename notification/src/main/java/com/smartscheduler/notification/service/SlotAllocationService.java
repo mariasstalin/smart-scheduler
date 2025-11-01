@@ -5,6 +5,8 @@ import com.smartscheduler.common.event.*;
 import com.smartscheduler.common.repository.*;
 import com.smartscheduler.notification.config.NotificationProperties;
 import com.smartscheduler.common.util.DateUtils;
+import com.smartscheduler.notification.model.PatientPriority;
+import com.smartscheduler.notification.priority.PatientPriorityEngine;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -16,6 +18,7 @@ import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -43,7 +46,7 @@ public class SlotAllocationService {
     private RasaService rasaService;
 
     @Autowired
-    private PriorityCalculator priorityService;
+    private PatientPriorityEngine patientPriorityEngine;
 
     @Autowired
     private NotificationProperties notificationProperties;
@@ -93,11 +96,9 @@ public class SlotAllocationService {
                 .filter(w -> preferredDatesContainUtcDate(w, slotDateUtc))
                 .toList());
 
-        candidates.sort(Comparator.<Waitlist>comparingDouble(w -> priorityService.calculateScore(w.getPatient()))
-                .reversed()
-                .thenComparing(Waitlist::getCreatedAt));
-
         candidates.removeIf(w -> w.getPatient() == null || w.getPatient().getConsecutiveMisses() >= notificationProperties.getMaxConsecutiveMisses());
+
+        candidates = sortWaitlistByPriority(slotStart, candidates);
 
         // 3. Stage 1: Notify Waitlist
         if (!candidates.isEmpty()) {
@@ -410,4 +411,37 @@ public class SlotAllocationService {
         log.info("Opening slot to public for doctor={} slotStart={}", doctor.getId(), slotStart);
         rabbitTemplate.convertAndSend("appointments.exchange", "appointments.slots.opened", Map.of("doctorId", doctor.getId(), "startIso", event.getStartTime(), "endIso", event.getEndTime()));
     }
+
+    public List<Waitlist> sortWaitlistByPriority(LocalDateTime cancelledSlot, List<Waitlist> waitlists) {
+        // Step 1 & 2: Build patient priorities with booking history
+        List<PatientPriority> patientPriorities = waitlists.stream()
+                .map(waitlist -> {
+                    var patient = waitlist.getPatient();
+                    var pp = new PatientPriority(patient);
+
+                    // Fetch booking history
+                    pp.setBookingHistory(
+                            appointmentRepository.findByPatientId(patient.getId()).stream()
+                                    .map(Appointment::getStartTimeLocal)
+                                    .collect(Collectors.toList())
+                    );
+                    return pp;
+                })
+                .toList();
+
+        // Step 3: Rank patients using configured engine
+        List<PatientPriority> rankedPatients = patientPriorityEngine.rankPatientsByPriority(cancelledSlot, patientPriorities);
+
+        // Step 4: Create a map of patientId → score for quick lookup
+        Map<Long, Double> scoreMap = rankedPatients.stream().collect(Collectors.toMap(PatientPriority::getId, PatientPriority::getScore));
+
+        // Step 5: Sort waitlists based on score
+        return waitlists.stream()
+                .sorted(Comparator.comparing(
+                        w -> scoreMap.getOrDefault(w.getPatient().getId(), 0.0),
+                        Comparator.reverseOrder()
+                ))
+                .toList();
+    }
+
 }

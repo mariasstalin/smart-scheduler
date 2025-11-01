@@ -12,5 +12,5 @@ spring:
       port: 6379
       timeout: 2000ms
 
-notification:
-  base-url: http://notification:8080
+application:
+  base-url: http://gateway:8080

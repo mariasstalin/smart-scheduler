@@ -8,7 +8,7 @@ from rasa_sdk.events import SlotSet, ActiveLoop, FollowupAction, EventType
 import json
 
 # --- CONFIGURATION ---
-BASE_URL = "http://localhost:8080/appointment/external"
+BASE_URL = "http://gateway:8080/appointment/external"
 BUSINESS_HOURS_START = 10
 BUSINESS_HOURS_END = 18
 

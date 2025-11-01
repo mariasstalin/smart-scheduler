@@ -1,5 +1,3 @@
-
-# Define a common network for all services
 networks:
   smart_scheduler_net:
     driver: bridge
@@ -64,11 +62,12 @@ services:
     networks:
       - smart_scheduler_net
 
+  # -------------------------
+  # Custom Built Images - NOW REFERENCING PRIVATE DOCKER HUB REPOSITORY
+  # -------------------------
+
   duckling:
-    build:
-      context: ./duckling
-      dockerfile: Dockerfile
-    image: smart-scheduler-duckling
+    image: mariasstalin/smart-scheduler:duckling-latest
     container_name: duckling
     ports:
       - "8000:8000"
@@ -83,14 +82,11 @@ services:
       - smart_scheduler_net
 
     # -------------------------
-  # Rasa and NLP Services
-  # -------------------------
+    # Rasa and NLP Services
+    # -------------------------
 
   rasa-actions:
-    build:
-      context: ./rasa-actions
-      dockerfile: Dockerfile
-    image: smart-scheduler-rasa-actions
+    image: mariasstalin/smart-scheduler:rasa-actions-latest
     container_name: rasa-actions
     ports:
       - "5055:5055"
@@ -100,7 +96,7 @@ services:
       timeout: 10s
       retries: 10
       start_period: 60s
-    profiles: [ "local", "prod" ]
+    profiles: [ "local" ]
     networks:
       - smart_scheduler_net
 
@@ -127,7 +123,7 @@ services:
       timeout: 10s
       retries: 10
       start_period: 180s
-    profiles: ["local", "prod"]
+    profiles: ["local" ]
     networks:
       - smart_scheduler_net
 
@@ -135,10 +131,7 @@ services:
   # Light GBM
   # -------------------------
   light-gbm:
-    build:
-      context: ./light-gbm
-      dockerfile: Dockerfile
-    image: smart-scheduler-light-gbm
+    image: mariasstalin/smart-scheduler:light-gbm-latest
     container_name: light-gbm
     ports:
       - "5000:5000"
@@ -174,14 +167,11 @@ services:
   # Spring Boot Microservices
   # -------------------------
   discovery:
-    build:
-      context: .
-      dockerfile: discovery/Dockerfile
-    image: smart-scheduler-discovery
+    image: mariasstalin/smart-scheduler:discovery-latest
     container_name: discovery
     ports:
       - "8761:8761"
-    profiles: ["local", "prod"]
+    profiles: ["local"]
     healthcheck:
       test: ["CMD-SHELL", "curl -sf --max-time 5 http://localhost:8761/actuator/health | grep '\"UP\"' > /dev/null || exit 1"]
       interval: 15s
@@ -192,10 +182,7 @@ services:
       - smart_scheduler_net
 
   config:
-    build:
-      context: .
-      dockerfile: config/Dockerfile
-    image: smart-scheduler-config
+    image: mariasstalin/smart-scheduler:config-latest
     container_name: config
     ports:
       - "8888:8888"
@@ -204,7 +191,7 @@ services:
     depends_on:
       discovery:
         condition: service_healthy
-    profiles: ["local", "prod"]
+    profiles: ["local"]
     healthcheck:
       test: ["CMD-SHELL", "curl -sf --max-time 5 http://localhost:8888/actuator/health | grep '\"UP\"' > /dev/null || exit 1"]
       interval: 15s
@@ -215,10 +202,7 @@ services:
       - smart_scheduler_net
 
   gateway:
-    build:
-      context: .
-      dockerfile: gateway/Dockerfile
-    image: smart-scheduler-gateway
+    image: mariasstalin/smart-scheduler:gateway-latest
     container_name: gateway
     ports:
       - "8080:8080"
@@ -227,7 +211,7 @@ services:
     depends_on:
       discovery:
         condition: service_healthy
-    profiles: ["local", "prod"]
+    profiles: ["local"]
     healthcheck:
       test: ["CMD-SHELL", "curl -sf --max-time 5 http://localhost:8080/actuator/health | grep '\"UP\"' > /dev/null || exit 1"]
       interval: 15s
@@ -238,10 +222,7 @@ services:
       - smart_scheduler_net
 
   appointment:
-    build:
-      context: .
-      dockerfile: appointment/Dockerfile
-    image: smart-scheduler-appointment
+    image: mariasstalin/smart-scheduler:appointment-latest
     container_name: appointment
     ports:
       - "8082:8082"
@@ -262,7 +243,7 @@ services:
         condition: service_healthy
       gateway:
         condition: service_healthy
-    profiles: ["prod"]
+    profiles: ["local"]
     healthcheck:
       test: ["CMD-SHELL", "curl -sf --max-time 5 http://localhost:8082/actuator/health | grep '\"UP\"' > /dev/null || exit 1"]
       interval: 15s
@@ -273,10 +254,7 @@ services:
       - smart_scheduler_net
 
   notification:
-    build:
-      context: .
-      dockerfile: notification/Dockerfile
-    image: smart-scheduler-notification
+    image: mariasstalin/smart-scheduler:notification-latest
     container_name: notification
     ports:
       - "8083:8083"
@@ -301,7 +279,7 @@ services:
         condition: service_healthy
       appointment:
         condition: service_healthy
-    profiles: ["prod"]
+    profiles: ["local"]
     healthcheck:
       test: ["CMD-SHELL", "curl -sf --max-time 5 http://localhost:8083/actuator/health | grep '\"UP\"' > /dev/null || exit 1"]
       interval: 15s
@@ -312,10 +290,7 @@ services:
       - smart_scheduler_net
 
   demo:
-    build:
-      context: .
-      dockerfile: demo/Dockerfile
-    image: smart-scheduler-demo
+    image: mariasstalin/smart-scheduler:demo-latest
     container_name: demo
     ports:
       - "9999:9999"
@@ -326,7 +301,7 @@ services:
         condition: service_healthy
       notification:
         condition: service_healthy
-    profiles: [ "prod" ]
+    profiles: [ "local" ]
     healthcheck:
       test: [ "CMD-SHELL", "curl -sf --max-time 5 http://localhost:9999/actuator/health | grep '\"UP\"' > /dev/null || exit 1" ]
       interval: 15s

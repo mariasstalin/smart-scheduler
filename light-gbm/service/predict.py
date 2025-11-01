@@ -47,4 +47,4 @@ def predict_priority_score(cancelled_slot_time, patient_data):
     # Predict the score
     df["score"] = bst.predict(data)
     result = df.sort_values(by="score", ascending=False)
-    return result.to_json(orient="records", lines=True)
+    return result.to_dict(orient="records")

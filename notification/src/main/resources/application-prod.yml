@@ -26,3 +26,11 @@ spring:
 message:
   provider: ${NOTIFICATION_MESSAGING_PROVIDER}
   system-phone: ${NOTIFICATION_SYSTEM_PHONE}
+
+ai:
+  priority:
+    engine:
+      url: http://127.0.0.1:5000
+
+rasa:
+  url: http://rasa:5005

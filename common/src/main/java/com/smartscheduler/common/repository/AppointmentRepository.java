@@ -21,6 +21,8 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
 
     Optional<Appointment> findByZohoId(String bookingId);
 
+    List<Appointment> findByPatientId(Long patientId);
+
     @Query("SELECT a FROM Appointment a JOIN a.patient p WHERE p.phone = :phone AND a.status = :status")
     List<Appointment> findByPatientPhoneAndStatus(@Param("phone") String phone, @Param("status") Appointment.Status status);
 

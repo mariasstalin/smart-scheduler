@@ -11,9 +11,6 @@ management:
       exposure:
         include: health,info
 
-rasa:
-  url: http://rasa:5005
-
 notification:
   scheduling:
     response-window-minutes: 3
@@ -22,12 +19,11 @@ notification:
 
   patient:
     priority:
+      engine: ${NOTIFICATION_PATIENT_PRIORITY_ENGINE}
       weights:
-        severity-level: 8.0
-        visit-count-max-score: 10.0
-        visit-count-divisor: 5.0
-        high-net-worth: 10.0
-        high-profile: 10.0
-        response-rate-weight: 20.0
-        consecutive-miss-penalty: 5.0
-        consecutive-miss-max-penalty: 15.0
+        is-vip: 0.3
+        severity-level: 0.25
+        acceptance-rate: 0.25
+        time-difference: 0.1
+        time-consistency-std-dev: 0.1
+

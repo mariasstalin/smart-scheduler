@@ -78,6 +78,10 @@ public final class DateUtils {
         }
     }
 
+    public static String toFormattedDateTimeString(LocalDateTime localDateTime) {
+        return localDateTime.format(RASA_DATE_TIME_FORMATTER);
+    }
+
     public static String toFormattedDateTimeString(LocalDateTime localDateTime, ZoneId zoneId) {
         ZonedDateTime utcZonedTime = localDateTime.atZone(ZoneId.of("UTC"));
         ZonedDateTime convertedTime = utcZonedTime.withZoneSameInstant(zoneId);

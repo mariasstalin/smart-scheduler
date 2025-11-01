@@ -19,7 +19,7 @@ pipeline:
   constrain_similarities: true
 - name: EntitySynonymMapper
 - name: DucklingEntityExtractor
-  url: http://localhost:8000
+  url: http://duckling:8000
   dimensions: ["time"]
 - name: FallbackClassifier
   threshold: 0.7
