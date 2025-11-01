@@ -4,6 +4,7 @@ import com.smartscheduler.common.entity.*;
 import com.smartscheduler.common.event.SlotBookedEvent;
 import com.smartscheduler.common.repository.*;
 import com.smartscheduler.notification.config.NotificationProperties;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -50,6 +51,7 @@ public class NotificationService {
     @Autowired
     private MessageService messageService;
 
+    @Transactional
     @RabbitListener(queues = "appointments.slots.booked.queue")
     public void onSlotBooked(SlotBookedEvent event) {
         log.info("Received SlotCancelledEvent: {}", event);

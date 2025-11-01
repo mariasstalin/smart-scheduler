@@ -6,9 +6,10 @@ from rasa_sdk import Action, Tracker, FormValidationAction
 from rasa_sdk.executor import CollectingDispatcher
 from rasa_sdk.events import SlotSet, ActiveLoop, FollowupAction, EventType
 import json
+import os
 
 # --- CONFIGURATION ---
-BASE_URL = "http://gateway:8080/appointment/external"
+BASE_URL = os.getenv("APPLICATION_BASE_URL", "http://gateway:8080")
 BUSINESS_HOURS_START = 10
 BUSINESS_HOURS_END = 18
 
@@ -23,7 +24,7 @@ class AppointmentAPI:
         """Fetches all appointments for a user."""
         try:
             # The sender_id (phone_number) is used here for API lookup
-            response = requests.get(f"{self.base_url}/by-phone/{phone_number}", timeout=300)
+            response = requests.get(f"{self.base_url}/appointment/external/by-phone/{phone_number}", timeout=300)
             response.raise_for_status()
             # Assuming the response body is {'appointments': [...]}
             return response.json().get("appointments", [])
@@ -34,7 +35,7 @@ class AppointmentAPI:
     def lookup_appointment_details(self, appointment_id: str) -> Dict[str, Any] | None:
         """Fetches details for a single appointment ID."""
         try:
-            response = requests.get(f"{self.base_url}/{appointment_id}", timeout=300)
+            response = requests.get(f"{self.base_url}/appointment/external/{appointment_id}", timeout=300)
             response.raise_for_status()
             # Assuming the API returns the single appointment object directly
             return response.json()
@@ -49,7 +50,7 @@ class AppointmentAPI:
                 "newDatetime": new_datetime,
                 "slotOfferId": slot_offer_id
             }
-            response = requests.put(f"{self.base_url}/{old_id}", json=payload, timeout=300)
+            response = requests.put(f"{self.base_url}/appointment/external/{old_id}", json=payload, timeout=300)
 
             if response.status_code == 200:
                 return True, "SUCCESS"
@@ -69,7 +70,7 @@ class AppointmentAPI:
             payload = {
                 "slot_offer_id": slot_offer_id
             }
-            response = requests.post(f"{self.base_url}/{old_id}/deny-offer", json=payload, timeout=300)
+            response = requests.post(f"{self.base_url}/appointment/external/{old_id}/deny-offer", json=payload, timeout=300)
             response.raise_for_status()
             return True
         except requests.exceptions.RequestException as e:
@@ -79,7 +80,7 @@ class AppointmentAPI:
     def cancel_appointment(self, appointment_id: str) -> bool:
         """Cancels an existing appointment."""
         try:
-            response = requests.delete(f"{self.base_url}/{appointment_id}", timeout=300)
+            response = requests.delete(f"{self.base_url}/appointment/external/{appointment_id}", timeout=300)
             response.raise_for_status()
             return True
         except requests.exceptions.RequestException as e:
@@ -406,7 +407,7 @@ class ActionConfirmSlotOffer(Action):
         events.extend([
             SlotSet("new_slot_datetime", None), SlotSet("old_appointment_id", None),
             SlotSet("slot_offer_id", None), SlotSet("old_appointment_datetime", None),
-            SlotSet("old_service_name", None),
+            SlotSet("old_service_name", None), SlotSet("slot_offer_confirmation", None),
             SlotSet("requested_slot", None), FollowupAction("utter_goodbye")
         ])
         return events
@@ -433,10 +434,24 @@ class ActionDenySlotOffer(Action):
             ActiveLoop(None),
             SlotSet("new_slot_datetime", None), SlotSet("old_appointment_id", None),
             SlotSet("slot_offer_id", None), SlotSet("old_appointment_datetime", None),
-            SlotSet("old_service_name", None),
+            SlotSet("old_service_name", None), SlotSet("slot_offer_confirmation", None),
             SlotSet("requested_slot", None), FollowupAction("utter_goodbye")
         ]
         return events
+
+class ValidateSlotOfferConfirmationForm(FormValidationAction):
+    def name(self) -> Text:
+        return "validate_slot_offer_confirmation_form"
+
+    def validate_slot_offer_confirmation(self, slot_value: Any, dispatcher: CollectingDispatcher, tracker: Tracker, domain: Dict) -> Dict[Text, Any]:
+        # Since the slot mapping handles True/False via intents,
+        # this only runs if the user inputs something else.
+        if slot_value is None:
+            dispatcher.utter_message(text="I didn't quite catch that. Please answer Yes or No.")
+            return {"slot_offer_confirmation": None}
+
+        # If the slot was set to True/False by intent, accept it.
+        return {"slot_offer_confirmation": slot_value}
 
 # ----------------------------------------------------------------------
 # --- 4. CANCEL APPOINTMENT ACTIONS (Flow 3) ---

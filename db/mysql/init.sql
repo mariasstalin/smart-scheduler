@@ -70,13 +70,17 @@ CREATE TABLE appointments (
 
 -- Waitlist table
 CREATE TABLE waitlist (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    doctor_id BIGINT NOT NULL,
-    patient_id BIGINT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    notified BOOLEAN DEFAULT FALSE,
-    FOREIGN KEY (doctor_id) REFERENCES doctors(id),
-    FOREIGN KEY (patient_id) REFERENCES patients(id)
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  doctor_id BIGINT NOT NULL,
+  patient_id BIGINT NOT NULL,
+  created_at timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  notified BOOLEAN DEFAULT FALSE,
+  active BOOLEAN DEFAULT TRUE,
+  consecutive_misses int DEFAULT NULL,
+  opt_out_expiry TIMESTAMP DEFAULT NULL,
+  appointment_id BIGINT DEFAULT NULL,
+  FOREIGN KEY (doctor_id) REFERENCES doctors(id),
+  FOREIGN KEY (patient_id) REFERENCES patients(id)
 );
 
 -- New table for multiple preferred dates

@@ -37,7 +37,8 @@ public class Waitlist {
     @Builder.Default
     private List<WaitlistPreferredDate> preferredDates = new ArrayList<>();
 
-    private Boolean active;
+    @Builder.Default
+    private Boolean active = true;
 
     private Integer consecutiveMisses = 0;
 

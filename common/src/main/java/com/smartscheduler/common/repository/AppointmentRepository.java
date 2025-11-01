@@ -34,6 +34,6 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
                                                             @Param("newEndTime") Instant newEndTime,
                                                             @Param("status") Appointment.Status status);
 
-    List<Appointment> findByDoctorAndStartTimeAfterAndStartTimeBeforeAndStatus(Doctor doctor, Instant instant, Instant futureSearchLimit, Appointment.Status status);
+    List<Appointment> findByDoctorAndStartTimeBetweenAndStatus(Doctor doctor, Instant start, Instant end, Appointment.Status status);
 }
 

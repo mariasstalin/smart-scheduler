@@ -23,6 +23,9 @@ public class SimulatedWhatsAppMessageService implements MessageService {
 
     private static final Logger log = LoggerFactory.getLogger(SimulatedWhatsAppMessageService.class);
 
+    @Value("${application.base-url}/demo/chat/external")
+    private String demoChatUrl;
+
     @Value("${message.system-phone}")
     private String systemPhone;
 
@@ -36,8 +39,6 @@ public class SimulatedWhatsAppMessageService implements MessageService {
             log.warn("No messages to send");
             return;
         }
-
-        final String baseUrl = "http://localhost:9999/demo/chat/external";
 
         for (Map<String, Object> msg : messages) {
             try {
@@ -53,7 +54,7 @@ public class SimulatedWhatsAppMessageService implements MessageService {
                 String payloadJson = buildPayload(recipientId, text, buttons);
 
                 HttpEntity<String> request = new HttpEntity<>(payloadJson, headers);
-                ResponseEntity<String> response = restTemplate.postForEntity(baseUrl, request, String.class);
+                ResponseEntity<String> response = restTemplate.postForEntity(demoChatUrl, request, String.class);
 
                 log.info("✅ Demo WhatsApp message sent to [{}], status={}, response={}",
                         recipientId, response.getStatusCode(), response.getBody());

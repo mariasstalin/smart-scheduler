@@ -5,17 +5,31 @@ spring:
   application:
     name: notification
 
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 5000
+        retryer:
+          period: 1000
+          maxPeriod: 5000
+          maxAttempts: 3
+
 management:
   endpoints:
     web:
       exposure:
         include: health,info
 
+application:
+  base-url: ${APPLICATION_BASE_URL}}
+
 notification:
   scheduling:
-    response-window-minutes: 3
-    max-consecutive-misses: 3
-    opt-out-duration: PT15M
+    response-window-minutes: ${NOTIFICATION_SCHEDULING_RESPONSE_WINDOW_MINUTES:3}
+    max-consecutive-misses: ${NOTIFICATION_SCHEDULING_MAX_CONSECUTIVE_MISSES:3}
+    opt-out-duration: ${NOTIFICATION_SCHEDULING_OPT_OUT_DURATION:PT15M}
 
   patient:
     priority:

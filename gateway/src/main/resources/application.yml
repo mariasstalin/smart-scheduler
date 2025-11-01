@@ -29,10 +29,11 @@ spring:
                     name: smartSchedulerBreaker
                 - name: Retry
                   args:
-                    retries: 3
+                    retries: 5
                     statuses:
                       - INTERNAL_SERVER_ERROR
                       - SERVICE_UNAVAILABLE
+
             - id: notification
               uri: lb://notification
               predicates:
@@ -43,7 +44,22 @@ spring:
                     name: smartSchedulerBreaker
                 - name: Retry
                   args:
-                    retries: 3
+                    retries: 5
+                    statuses:
+                      - INTERNAL_SERVER_ERROR
+                      - SERVICE_UNAVAILABLE
+
+            - id: demo
+              uri: lb://demo
+              predicates:
+                - Path=/demo/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: smartSchedulerBreaker
+                - name: Retry
+                  args:
+                    retries: 5
                     statuses:
                       - INTERNAL_SERVER_ERROR
                       - SERVICE_UNAVAILABLE

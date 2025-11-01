@@ -12,6 +12,7 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional; // Ensure this is imported
 
 import java.time.*;
@@ -74,6 +75,7 @@ public class SlotAllocationService {
         }
     }
 
+    @Transactional
     private void processCancelledSlot(Doctor doctor, LocalDateTime slotStart, LocalDateTime slotEnd, SlotCancelledEvent event) {
         LocalDate slotDateUtc = slotStart.toLocalDate();
         log.info("Processing cancelled slot for doctor={}, slotStart={} (UTC date={})", doctor.getId(), slotStart, slotDateUtc);
@@ -93,7 +95,7 @@ public class SlotAllocationService {
         // 2. Build and filter waitlist candidates
         List<Waitlist> candidates = new ArrayList<>(waitlistRepository.findByDoctorAndActiveTrueWithPreferredDates(doctor)
                 .stream()
-                .filter(w -> preferredDatesContainUtcDate(w, slotDateUtc))
+                .filter(w -> preferredDatesContainUtcDate(w, slotStart))
                 .toList());
 
         candidates.removeIf(w -> w.getPatient() == null || w.getPatient().getConsecutiveMisses() >= notificationProperties.getMaxConsecutiveMisses());
@@ -104,36 +106,14 @@ public class SlotAllocationService {
         if (!candidates.isEmpty()) {
             log.info("Starting sequential waitlist notification for {} candidates.", candidates.size());
             notifyWaitlistSequentially(candidates.iterator(), doctor, slotStart, slotEnd, event);
-            return;
+        } else {
+            log.info("Waitlist candidates are empty. Skipping to Stage 2.");
+            checkFutureAppointments(doctor, slotStart, slotEnd, event);
         }
-        log.info("No suitable candidates on the waitlist. Checking future appointments.");
 
-        Instant slotStartInstant = slotStart.toInstant(ZoneOffset.UTC);
-        Instant futureSearchLimit = slotStartInstant.plus(3, ChronoUnit.DAYS);
-        log.info("Limiting future appointment search to: {}", futureSearchLimit);
-
-        // 4. Stage 2: Notify Future Appointments (only if waitlist is exhausted)
-        // You will need a new repository method that accepts two Instant parameters
-        List<Appointment> futureAppointments = appointmentRepository.findByDoctorAndStartTimeAfterAndStartTimeBeforeAndStatus(
-                doctor,
-                slotStartInstant,
-                futureSearchLimit,
-                Appointment.Status.UPCOMING
-        );
-        futureAppointments.sort(Comparator.comparing(Appointment::getStartTime));
-
-        if (!futureAppointments.isEmpty()) {
-            log.info("Starting sequential future appointment notification for {} patients.", futureAppointments.size());
-            notifyFutureSequentially(futureAppointments.iterator(), doctor, slotStart, slotEnd, event);
-            return;
-        }
-        log.info("No suitable future appointments for earlier slot. Opening to public.");
-
-        // 5. Stage 3: Open to Public (if both lists are exhausted)
-        openSlotToPublic(doctor, slotStart, event);
     }
 
-    private boolean preferredDatesContainUtcDate(Waitlist w, LocalDate slotDateUtc) {
+    private boolean preferredDatesContainUtcDate(Waitlist w, LocalDateTime slotDateTimeUtc) {
         if (w.getPreferredDates() == null) {
             return false;
         }
@@ -141,9 +121,9 @@ public class SlotAllocationService {
             if (waitlistPreferredDate == null) {
                 continue;
             }
-            if (waitlistPreferredDate.getPreferredDateLocal().equals(slotDateUtc)) {
-                return true;
-            }
+            LocalDateTime waitlistPreferredDateStart = waitlistPreferredDate.getPreferredDateTimeLocal();
+            LocalDateTime waitlistPreferredDateEnd = waitlistPreferredDateStart.plusDays(1);
+            return (slotDateTimeUtc.isEqual(waitlistPreferredDateStart) || slotDateTimeUtc.isAfter(waitlistPreferredDateStart)) && slotDateTimeUtc.isBefore(waitlistPreferredDateEnd);
         }
         return false;
     }
@@ -152,7 +132,7 @@ public class SlotAllocationService {
     @Transactional
     private void notifyWaitlistSequentially(Iterator<Waitlist> it, Doctor doctor, LocalDateTime slotStart, LocalDateTime slotEnd, SlotCancelledEvent event) {
         if (!it.hasNext()) {
-            // Iteration is complete.
+            checkFutureAppointments(doctor, slotStart, slotEnd, event);
             return;
         }
 
@@ -257,17 +237,58 @@ public class SlotAllocationService {
         }
     }
 
+    @Transactional
+    private void checkFutureAppointments(Doctor doctor, LocalDateTime slotStart, LocalDateTime slotEnd, SlotCancelledEvent event) {
+        log.info("Waitlist exhausted. Starting Stage 2: Checking future appointments.");
+
+        Instant slotStartInstant = slotStart.toInstant(ZoneOffset.UTC);
+        Instant futureSearchLimit = slotStartInstant.plus(1, ChronoUnit.DAYS);
+        log.info("Limiting future appointment search to: {}", futureSearchLimit);
+
+        List<Appointment> futureAppointments = appointmentRepository.findByDoctorAndStartTimeBetweenAndStatus(
+                doctor,
+                slotStartInstant,
+                futureSearchLimit,
+                Appointment.Status.UPCOMING
+        );
+        futureAppointments.sort(Comparator.comparing(Appointment::getStartTime));
+
+        if (!futureAppointments.isEmpty()) {
+            log.info("Starting sequential future appointment notification for {} patients.", futureAppointments.size());
+            // Start Stage 2 sequence
+            notifyFutureSequentially(futureAppointments.iterator(), doctor, slotStart, slotEnd, event);
+        } else {
+            log.info("No suitable future appointments for earlier slot. Skipping to Stage 3.");
+            // If Stage 2 is exhausted, proceed to Stage 3
+            openSlotToPublic(doctor, slotStart, event);
+        }
+    }
+
     // FIX 2: ADD @Transactional to ensure the Patient proxy can be loaded and saved.
     @Transactional
     private void notifyFutureSequentially(Iterator<Appointment> it, Doctor doctor, LocalDateTime slotStart, LocalDateTime slotEnd, SlotCancelledEvent event) {
         if (!it.hasNext()) {
-            // Iteration is complete. Move to the final stage.
             openSlotToPublic(doctor, slotStart, event);
             return;
         }
 
-        Appointment appointment = it.next();
-        Patient patient = appointment.getPatient(); // Accessing patient needs a session
+        // 1. Get the next appointment proxy, moving the iterator forward ONLY ONCE.
+        Appointment currentAppointmentProxy = it.next();
+
+        // 2. RELOAD the Appointment within the active transaction scope.
+        // This resolves the LazyInitializationException.
+        Appointment appointment = appointmentRepository.findById(currentAppointmentProxy.getId())
+                .orElse(null);
+
+        // Null check in case the appointment was deleted externally
+        if (appointment == null) {
+            log.warn("Appointment ID {} not found during notification sequence.", currentAppointmentProxy.getId());
+            notifyFutureSequentially(it, doctor, slotStart, slotEnd, event);
+            return;
+        }
+
+        // Accessing patient is now safe, though we only need the ID now.
+        Patient patient = appointment.getPatient();
 
         Notification notification = Notification.builder()
                 .patient(patient)
@@ -282,9 +303,7 @@ public class SlotAllocationService {
                 .build();
         notificationRepository.save(notification);
 
-        // This line is now safe due to the @Transactional annotation
-        patient.setTotalNotificationsSent(patient.getTotalNotificationsSent() + 1);
-        patientRepository.save(patient);
+        //safelyIncrementNotifications(patient.getId());
 
         try {
             rasaService.sendExternalSlotOffer(
@@ -297,6 +316,8 @@ public class SlotAllocationService {
             log.error("Failed to send message to patientId={}, skipping to next future appointment", patient.getId(), ex);
             notification.setStatus(Notification.Status.EXPIRED);
             notificationRepository.save(notification);
+
+            // Recursion moves to the next appointment in the iterator 'it'.
             notifyFutureSequentially(it, doctor, slotStart, slotEnd, event);
             return;
         }
@@ -361,6 +382,7 @@ public class SlotAllocationService {
             if (future != null) future.cancel(false);
 
             notification.setStatus(Notification.Status.CONFIRMED);
+            notification.setResponse(Notification.Response.YES);
             notification.setConfirmedAt(Instant.now());
             notificationRepository.save(notification);
 
@@ -412,6 +434,7 @@ public class SlotAllocationService {
         rabbitTemplate.convertAndSend("appointments.exchange", "appointments.slots.opened", Map.of("doctorId", doctor.getId(), "startIso", event.getStartTime(), "endIso", event.getEndTime()));
     }
 
+    @Transactional
     public List<Waitlist> sortWaitlistByPriority(LocalDateTime cancelledSlot, List<Waitlist> waitlists) {
         // Step 1 & 2: Build patient priorities with booking history
         List<PatientPriority> patientPriorities = waitlists.stream()

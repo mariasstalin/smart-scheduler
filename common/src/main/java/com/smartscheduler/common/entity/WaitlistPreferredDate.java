@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 
 @Entity
@@ -30,8 +31,8 @@ public class WaitlistPreferredDate {
         this.preferredDate = preferredDate;
     }
 
-    public LocalDate getPreferredDateLocal() {
-        return LocalDate.ofInstant(preferredDate, ZoneId.of("UTC"));
+    public LocalDateTime getPreferredDateTimeLocal() {
+        return LocalDateTime.ofInstant(preferredDate, ZoneId.of("UTC"));
     }
 
     @Override

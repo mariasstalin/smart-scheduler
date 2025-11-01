@@ -22,7 +22,9 @@ def predict_priority_score(cancelled_slot_time, patient_data):
     cancelled_slot_minutes = cancelled_slot_time.hour * 60 + cancelled_slot_time.minute
     feature_list = []
     for patient_info in patient_data:
-        acceptance_rate = (patient_info["total_notifications_responded"] / patient_info["total_notifications_sent"]) * 100
+        acceptance_rate = 0
+        if patient_info.get("total_notifications_sent"):
+            acceptance_rate = (patient_info["total_notifications_responded"] / patient_info["total_notifications_sent"]) * 100
         features = {"id": patient_info["id"], "is_vip": patient_info.get("is_vip"), "acceptance_rate": acceptance_rate,
                     "severity_level": patient_info.get("severity_level", 0)}
         history = patient_info["booking_history"]
