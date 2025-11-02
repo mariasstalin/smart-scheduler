@@ -64,7 +64,7 @@ This will start:
 - `light GBM (ai priority engine)`
 - `duckling`
 - `rabbitmq`
-- `mysql`
+- `mysql (db:smart_scheduler; username:root; password:root)`
 - `redis`
 - `ngrok` (to expose localhost for Zoho)
 ---
