@@ -47,11 +47,15 @@ APPLICATION_BASE_URL=http://gateway:8080
 ## 🐳 Step 3: Start All Services
 
 Run the following command to bring up all SmartScheduler components in production mode:
-
 ```bash
 docker compose --profile prod up -d
 ```
-
+Note:
+```
+If any of the SmartScheduler services fail to start after executing
+docker compose --profile prod up -d,
+please re-run the same command a few more times until all services are up and healthy.
+```
 This will start:
 - `discovery service` (Eureka)
 - `gateway service`
