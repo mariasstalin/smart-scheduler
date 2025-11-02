@@ -32,14 +32,14 @@ NGROK_AUTHTOKEN=<Your Ngrok Auth Token>
 NGROK_DOMAIN=<Leave empty initially>
 
 NOTIFICATION_MESSAGING_PROVIDER=demo
-NOTIFICATION_SYSTEM_PHONE=<Demo or Twilio Phone Number>
+NOTIFICATION_SYSTEM_PHONE=919999999999
 
 NOTIFICATION_PATIENT_PRIORITY_ENGINE=ai-based
 NOTIFICATION_SCHEDULING_RESPONSE_WINDOW_MINUTES=1
 NOTIFICATION_SCHEDULING_MAX_CONSECUTIVE_MISSES=3
 NOTIFICATION_SCHEDULING_OPT_OUT_DURATION=PT15M
 
-APPLICATION_BASE_URL=http://localhost:8080
+APPLICATION_BASE_URL=http://gateway:8080
 ```
 
 ---
@@ -53,16 +53,20 @@ docker compose --profile prod up -d
 ```
 
 This will start:
-- `discovery-service` (Eureka)
-- `appointment-service`
-- `notification-service`
-- `rasa-bot`
-- `ai-priority-engine`
-- `demo-messaging-service`
+- `discovery service` (Eureka)
+- `gateway service`
+- `config service`
+- `appointment service`
+- `notification service`
+- `demo service`
+- `rasa bot`
+- `rasa actions`
+- `light GBM (ai priority engine)`
+- `duckling`
 - `rabbitmq`
 - `mysql`
+- `redis`
 - `ngrok` (to expose localhost for Zoho)
-
 ---
 
 ## 🌐 Step 4: Verify Running Containers
@@ -71,7 +75,7 @@ Check that all services are up:
 docker ps
 ```
 
-You should see containers for `discovery`, `notification`, `appointment`, `rasa`, `rabbitmq`, `mysql`, `ai-engine`, and `ngrok`.
+You should see containers for `discovery`, `gateway`, `config`, `notification`, `appointment`, `demo`, `duckling`, `rasa`, `rasa-actions`, `rabbitmq`, `mysql`, `redis`, `light-gbm`, and `ngrok`.
 
 ---
 
