@@ -344,7 +344,7 @@ class ActionSetSlotOfferDetails(Action):
         unique_offer_id = latest_message_metadata.get("slot_offer_id")
 
         if not (new_slot and old_id and unique_offer_id):
-            dispatcher.utter_message(text="🛑 <b>SYSTEM ERROR:</b> Missing external offer details in message metadata. Cannot process this request.")
+            #dispatcher.utter_message(text="🛑 <b>SYSTEM ERROR:</b> Missing external offer details in message metadata. Cannot process this request.")
             return events
 
         try:
@@ -374,10 +374,11 @@ class ActionConfirmSlotOffer(Action):
         return "action_confirm_slot_offer"
 
     async def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
-        old_id = tracker.get_slot("old_appointment_id")
-        new_datetime = tracker.get_slot("new_slot_datetime")
+        latest_message_metadata = tracker.latest_message.get("metadata", {})
+        old_id = tracker.get_slot("old_appointment_id") or latest_message_metadata.get("old_appointment_id")
+        new_datetime = tracker.get_slot("new_slot_datetime") or latest_message_metadata.get("new_slot_datetime")
+        slot_offer_id = tracker.get_slot("slot_offer_id") or latest_message_metadata.get("slot_offer_id")
         old_time = tracker.get_slot("old_appointment_datetime")
-        slot_offer_id = tracker.get_slot("slot_offer_id")
 
         events: List[EventType] = [ActiveLoop(None)]
 

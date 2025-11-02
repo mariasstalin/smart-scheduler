@@ -38,7 +38,7 @@ public class Patient {
     private Boolean vip = false;
 
     @Default
-    private Integer severityLevel = 1;         // 1–10
+    private Integer severityLevel = 1;
 
     @Default
     private Integer visitCount = 0;            // number of visits in last year
@@ -49,10 +49,13 @@ public class Patient {
     @Default
     private Integer totalNotificationsResponded = 0;
 
+    @Builder.Default
+    private Boolean active = true;
+
     @Default
     private Integer consecutiveMisses = 0;
 
-    private LocalDateTime inactiveUntil;       // temporarily inactive
+    private Instant optOutExpiry;
 
     private LocalDateTime lastNotifiedAt;      // timestamp of last notification
 

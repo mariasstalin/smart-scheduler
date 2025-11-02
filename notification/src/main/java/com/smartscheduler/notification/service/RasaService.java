@@ -64,8 +64,13 @@ public class RasaService {
 
             List<Map<String, Object>> response = rasaClient.sendMessage(payload);
 
-            if (response != null && !response.isEmpty()) {
-                log.info("✅ Rasa response for [{}]: {}", senderId, response);
+            if (response == null || response.isEmpty()) {
+                response = rasaClient.sendMessage(payload);
+                if (response != null && !response.isEmpty()) {
+                    log.info("✅ Rasa response for [{}]: {}", senderId, response);
+                    return response;
+                }
+            } else {
                 return response;
             }
 

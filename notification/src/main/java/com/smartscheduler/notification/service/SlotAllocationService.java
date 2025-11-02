@@ -80,14 +80,14 @@ public class SlotAllocationService {
         LocalDate slotDateUtc = slotStart.toLocalDate();
         log.info("Processing cancelled slot for doctor={}, slotStart={} (UTC date={})", doctor.getId(), slotStart, slotDateUtc);
 
-        // 1. Reactivate expired opt-outs (logic remains correct)
         Instant now = Instant.now();
         for (Waitlist w : waitlistRepository.findByDoctorAndActiveFalseWithPreferredDates(doctor)) {
-            if (w.getOptOutExpiry() != null && w.getOptOutExpiry().isBefore(now)) {
-                w.setActive(true);
-                w.setConsecutiveMisses(0);
-                w.setOptOutExpiry(null);
-                waitlistRepository.save(w);
+            Patient patient = w.getPatient();
+            if (patient.getOptOutExpiry() != null && patient.getOptOutExpiry().isBefore(now)) {
+                patient.setActive(true);
+                patient.setConsecutiveMisses(0);
+                patient.setOptOutExpiry(null);
+                patientRepository.save(patient);
                 log.info("Re-activated waitlist id={} after optOutExpiry", w.getId());
             }
         }
@@ -98,7 +98,7 @@ public class SlotAllocationService {
                 .filter(w -> preferredDatesContainUtcDate(w, slotStart))
                 .toList());
 
-        candidates.removeIf(w -> w.getPatient() == null || w.getPatient().getConsecutiveMisses() >= notificationProperties.getMaxConsecutiveMisses());
+        candidates.removeIf(w -> w.getPatient() == null || Appointment.Status.UPCOMING != w.getAppointment().getStatus() || w.getPatient().getConsecutiveMisses() >= notificationProperties.getMaxConsecutiveMisses());
 
         candidates = sortWaitlistByPriority(slotStart, candidates);
 
@@ -144,12 +144,12 @@ public class SlotAllocationService {
             return;
         }
 
-        if (!wl.getActive()) {
-            if (wl.getOptOutExpiry() != null && wl.getOptOutExpiry().isBefore(Instant.now())) {
-                wl.setActive(true);
-                wl.setConsecutiveMisses(0);
-                wl.setOptOutExpiry(null);
-                waitlistRepository.save(wl);
+        if (!patient.getActive()) {
+            if (patient.getOptOutExpiry() != null && patient.getOptOutExpiry().isBefore(Instant.now())) {
+                patient.setActive(true);
+                patient.setConsecutiveMisses(0);
+                patient.setOptOutExpiry(null);
+                patientRepository.save(patient);
             } else {
                 log.info("Skipping inactive waitlist id={} for patient={}", wl.getId(), patient.getId());
                 notifyWaitlistSequentially(it, doctor, slotStart, slotEnd, event);
@@ -223,9 +223,9 @@ public class SlotAllocationService {
                 List<Waitlist> userWaitlists = waitlistRepository.findByPatientAndActiveTrueWithPreferredDates(patient);
                 Instant optOutExpiry = Instant.now().plus(notificationProperties.getOptOutDuration());
                 for (Waitlist w : userWaitlists) {
-                    w.setActive(false);
-                    w.setOptOutExpiry(optOutExpiry);
-                    waitlistRepository.save(w);
+                    patient.setActive(false);
+                    patient.setOptOutExpiry(optOutExpiry);
+                    patientRepository.save(patient);
                     log.info("Deactivated waitlist id={} for patient={} due to consecutive misses; optOutExpiry={}", w.getId(), patient.getId(), optOutExpiry);
                 }
             }
@@ -251,6 +251,7 @@ public class SlotAllocationService {
                 futureSearchLimit,
                 Appointment.Status.UPCOMING
         );
+        futureAppointments.removeIf(appointment -> Objects.equals(appointment.getId(), event.getAppointmentId()));
         futureAppointments.sort(Comparator.comparing(Appointment::getStartTime));
 
         if (!futureAppointments.isEmpty()) {
@@ -264,7 +265,6 @@ public class SlotAllocationService {
         }
     }
 
-    // FIX 2: ADD @Transactional to ensure the Patient proxy can be loaded and saved.
     @Transactional
     private void notifyFutureSequentially(Iterator<Appointment> it, Doctor doctor, LocalDateTime slotStart, LocalDateTime slotEnd, SlotCancelledEvent event) {
         if (!it.hasNext()) {
@@ -287,8 +287,9 @@ public class SlotAllocationService {
             return;
         }
 
-        // Accessing patient is now safe, though we only need the ID now.
         Patient patient = appointment.getPatient();
+        String patientPhone = patient.getPhone();
+        ZoneId patientTimeZoneId = patient.getTimeZoneId();
 
         Notification notification = Notification.builder()
                 .patient(patient)
@@ -303,15 +304,17 @@ public class SlotAllocationService {
                 .build();
         notificationRepository.save(notification);
 
-        //safelyIncrementNotifications(patient.getId());
+        patient.setTotalNotificationsSent(patient.getTotalNotificationsSent() + 1);
+        patientRepository.save(patient);
 
         try {
-            rasaService.sendExternalSlotOffer(
-                    patient.getPhone(),
-                    DateUtils.toFormattedDateTimeString(slotStart, patient.getTimeZoneId()),
+            List<Map<String, Object>> rasaResponse = rasaService.sendExternalSlotOffer(
+                    patientPhone,
+                    DateUtils.toFormattedDateTimeString(slotStart, patientTimeZoneId),
                     String.valueOf(appointment.getId()),
                     String.valueOf(notification.getId())
             );
+            messageService.sendWhatsAppMessage(rasaResponse);
         } catch (Exception ex) {
             log.error("Failed to send message to patientId={}, skipping to next future appointment", patient.getId(), ex);
             notification.setStatus(Notification.Status.EXPIRED);
@@ -353,9 +356,9 @@ public class SlotAllocationService {
                 List<Waitlist> userWaitlists = waitlistRepository.findByPatientAndActiveTrueWithPreferredDates(patient);
                 Instant optOutExpiry = Instant.now().plus(notificationProperties.getOptOutDuration());
                 for (Waitlist w : userWaitlists) {
-                    w.setActive(false);
-                    w.setOptOutExpiry(optOutExpiry);
-                    waitlistRepository.save(w);
+                    patient.setActive(false);
+                    patient.setOptOutExpiry(optOutExpiry);
+                    patientRepository.save(patient);
                 }
             }
 

@@ -45,8 +45,9 @@ CREATE TABLE patients (
     visit_count INTEGER NOT NULL DEFAULT 0,
     total_notifications_sent INTEGER NOT NULL DEFAULT 0,
     total_notifications_responded INTEGER NOT NULL DEFAULT 0,
-    consecutive_misses INTEGER NOT NULL DEFAULT 0,
-    inactive_until DATETIME,
+    active BOOLEAN DEFAULT TRUE,
+    consecutive_misses INTEGER DEFAULT NULL,
+    opt_out_expiry TIMESTAMP DEFAULT NULL,
     last_notified_at DATETIME,
     staff_notes TEXT
 );
@@ -75,9 +76,6 @@ CREATE TABLE waitlist (
   patient_id BIGINT NOT NULL,
   created_at timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   notified BOOLEAN DEFAULT FALSE,
-  active BOOLEAN DEFAULT TRUE,
-  consecutive_misses int DEFAULT NULL,
-  opt_out_expiry TIMESTAMP DEFAULT NULL,
   appointment_id BIGINT DEFAULT NULL,
   FOREIGN KEY (doctor_id) REFERENCES doctors(id),
   FOREIGN KEY (patient_id) REFERENCES patients(id)

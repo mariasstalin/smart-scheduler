@@ -16,17 +16,13 @@ import java.util.Optional;
 
 public interface WaitlistRepository extends JpaRepository<Waitlist, Long> {
 
-    @Query("SELECT w FROM Waitlist w JOIN FETCH w.preferredDates WHERE w.doctor = :doctor AND w.active = true")
+    @Query("SELECT w FROM Waitlist w JOIN FETCH w.preferredDates WHERE w.doctor = :doctor AND w.patient.active = true AND w.appointment.status = com.smartscheduler.common.entity.Appointment.Status.UPCOMING")
     List<Waitlist> findByDoctorAndActiveTrueWithPreferredDates(@Param("doctor") Doctor doctor);
 
-    @Query("SELECT w FROM Waitlist w JOIN FETCH w.preferredDates WHERE w.doctor = :doctor AND w.active = false")
+    @Query("SELECT w FROM Waitlist w JOIN FETCH w.preferredDates WHERE w.doctor = :doctor AND w.patient.active = false AND w.appointment.status = com.smartscheduler.common.entity.Appointment.Status.UPCOMING")
     List<Waitlist> findByDoctorAndActiveFalseWithPreferredDates(@Param("doctor") Doctor doctor);
 
-    //List<Waitlist> findByPatientAndActiveTrue(Patient patient);
-
-    @Query("SELECT w FROM Waitlist w JOIN FETCH w.preferredDates WHERE w.patient = :patient AND w.active = true")
+    @Query("SELECT w FROM Waitlist w JOIN FETCH w.preferredDates WHERE w.patient = :patient AND w.patient.active = true AND w.appointment.status = com.smartscheduler.common.entity.Appointment.Status.UPCOMING")
     List<Waitlist> findByPatientAndActiveTrueWithPreferredDates(@Param("patient") Patient patient);
 
 }
-
-

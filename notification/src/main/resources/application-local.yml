@@ -9,14 +9,38 @@ spring:
     url: jdbc:mysql://localhost:3306/smart_scheduler
     username: root
     password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 30
+      connection-timeout: 5000
+      idle-timeout: 60000
+      pool-name: SmartScheduler-HikariPool
   jpa:
     hibernate:
       ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        enable_lazy_load_no_trans: false
+  task:
+    execution:
+      thread-name-prefix: notification-async-
+      pool:
+        core-size: 5
+        max-size: 50
+        queue-capacity: 100
   rabbitmq:
     host: localhost
     port: 5672
     username: root
     password: root
+
+smartscheduler:
+  notification:
+    response-window-minutes: 5
+    max-consecutive-misses: 3
+    opt-out-duration: 7D
 
 message:
   provider: demo

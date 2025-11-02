@@ -75,7 +75,6 @@ public class WebhookSyncService {
                     .doctor(doctor)
                     .patient(patient)
                     .appointment(appointment)
-                    .active(true)
                     .createdAt(Instant.now())
                     .preferredDates(new ArrayList<>()) // Using ArrayList constructor safety
                     .build();
