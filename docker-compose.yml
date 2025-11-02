@@ -1,3 +1,5 @@
+
+# Define a common network for all services
 networks:
   smart_scheduler_net:
     driver: bridge
@@ -62,11 +64,10 @@ services:
     networks:
       - smart_scheduler_net
 
-  # -------------------------
-  # Custom Built Images - NOW REFERENCING PRIVATE DOCKER HUB REPOSITORY
-  # -------------------------
-
   duckling:
+    build:
+      context: ./duckling
+      dockerfile: Dockerfile
     image: smart-scheduler-duckling
     container_name: duckling
     ports:
@@ -82,10 +83,13 @@ services:
       - smart_scheduler_net
 
     # -------------------------
-    # Rasa and NLP Services
-    # -------------------------
+  # Rasa and NLP Services
+  # -------------------------
 
   rasa-actions:
+    build:
+      context: ./rasa-actions
+      dockerfile: Dockerfile
     image: smart-scheduler-rasa-actions
     container_name: rasa-actions
     ports:
@@ -123,7 +127,7 @@ services:
       timeout: 10s
       retries: 10
       start_period: 180s
-    profiles: ["local" , "prod"]
+    profiles: ["local", "prod"]
     networks:
       - smart_scheduler_net
 
@@ -131,6 +135,9 @@ services:
   # Light GBM
   # -------------------------
   light-gbm:
+    build:
+      context: ./light-gbm
+      dockerfile: Dockerfile
     image: smart-scheduler-light-gbm
     container_name: light-gbm
     ports:
@@ -167,6 +174,9 @@ services:
   # Spring Boot Microservices
   # -------------------------
   discovery:
+    build:
+      context: .
+      dockerfile: discovery/Dockerfile
     image: smart-scheduler-discovery
     container_name: discovery
     ports:
@@ -182,6 +192,9 @@ services:
       - smart_scheduler_net
 
   config:
+    build:
+      context: .
+      dockerfile: config/Dockerfile
     image: smart-scheduler-config
     container_name: config
     ports:
@@ -202,6 +215,9 @@ services:
       - smart_scheduler_net
 
   gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
     image: smart-scheduler-gateway
     container_name: gateway
     ports:
@@ -222,6 +238,9 @@ services:
       - smart_scheduler_net
 
   appointment:
+    build:
+      context: .
+      dockerfile: appointment/Dockerfile
     image: smart-scheduler-appointment
     container_name: appointment
     ports:
@@ -243,7 +262,7 @@ services:
         condition: service_healthy
       gateway:
         condition: service_healthy
-    profiles: ["local", "prod"]
+    profiles: ["prod"]
     healthcheck:
       test: ["CMD-SHELL", "curl -sf --max-time 5 http://localhost:8082/actuator/health | grep '\"UP\"' > /dev/null || exit 1"]
       interval: 15s
@@ -254,6 +273,9 @@ services:
       - smart_scheduler_net
 
   notification:
+    build:
+      context: .
+      dockerfile: notification/Dockerfile
     image: smart-scheduler-notification
     container_name: notification
     ports:
@@ -279,7 +301,7 @@ services:
         condition: service_healthy
       appointment:
         condition: service_healthy
-    profiles: ["local", "prod"]
+    profiles: ["prod"]
     healthcheck:
       test: ["CMD-SHELL", "curl -sf --max-time 5 http://localhost:8083/actuator/health | grep '\"UP\"' > /dev/null || exit 1"]
       interval: 15s
@@ -290,6 +312,9 @@ services:
       - smart_scheduler_net
 
   demo:
+    build:
+      context: .
+      dockerfile: demo/Dockerfile
     image: smart-scheduler-demo
     container_name: demo
     ports:
@@ -301,7 +326,7 @@ services:
         condition: service_healthy
       notification:
         condition: service_healthy
-    profiles: [ "local", "prod"]
+    profiles: [ "prod" ]
     healthcheck:
       test: [ "CMD-SHELL", "curl -sf --max-time 5 http://localhost:9999/actuator/health | grep '\"UP\"' > /dev/null || exit 1" ]
       interval: 15s
