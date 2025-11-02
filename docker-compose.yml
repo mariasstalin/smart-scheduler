@@ -67,7 +67,7 @@ services:
   # -------------------------
 
   duckling:
-    image: mariasstalin/smart-scheduler:duckling-latest
+    image: smart-scheduler-duckling
     container_name: duckling
     ports:
       - "8000:8000"
@@ -86,7 +86,7 @@ services:
     # -------------------------
 
   rasa-actions:
-    image: mariasstalin/smart-scheduler:rasa-actions-latest
+    image: smart-scheduler-rasa-actions
     container_name: rasa-actions
     ports:
       - "5055:5055"
@@ -131,7 +131,7 @@ services:
   # Light GBM
   # -------------------------
   light-gbm:
-    image: mariasstalin/smart-scheduler:light-gbm-latest
+    image: smart-scheduler-light-gbm
     container_name: light-gbm
     ports:
       - "5000:5000"
@@ -167,7 +167,7 @@ services:
   # Spring Boot Microservices
   # -------------------------
   discovery:
-    image: mariasstalin/smart-scheduler:discovery-latest
+    image: smart-scheduler-discovery
     container_name: discovery
     ports:
       - "8761:8761"
@@ -182,7 +182,7 @@ services:
       - smart_scheduler_net
 
   config:
-    image: mariasstalin/smart-scheduler:config-latest
+    image: smart-scheduler-config
     container_name: config
     ports:
       - "8888:8888"
@@ -202,7 +202,7 @@ services:
       - smart_scheduler_net
 
   gateway:
-    image: mariasstalin/smart-scheduler:gateway-latest
+    image: smart-scheduler-gateway
     container_name: gateway
     ports:
       - "8080:8080"
@@ -222,7 +222,7 @@ services:
       - smart_scheduler_net
 
   appointment:
-    image: mariasstalin/smart-scheduler:appointment-latest
+    image: smart-scheduler-appointment
     container_name: appointment
     ports:
       - "8082:8082"
@@ -254,7 +254,7 @@ services:
       - smart_scheduler_net
 
   notification:
-    image: mariasstalin/smart-scheduler:notification-latest
+    image: smart-scheduler-notification
     container_name: notification
     ports:
       - "8083:8083"
@@ -290,7 +290,7 @@ services:
       - smart_scheduler_net
 
   demo:
-    image: mariasstalin/smart-scheduler:demo-latest
+    image: smart-scheduler-demo
     container_name: demo
     ports:
       - "9999:9999"
