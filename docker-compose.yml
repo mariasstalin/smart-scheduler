@@ -96,7 +96,7 @@ services:
       timeout: 10s
       retries: 10
       start_period: 60s
-    profiles: [ "local" ]
+    profiles: [ "local", "prod" ]
     networks:
       - smart_scheduler_net
 
@@ -123,7 +123,7 @@ services:
       timeout: 10s
       retries: 10
       start_period: 180s
-    profiles: ["local" ]
+    profiles: ["local" , "prod"]
     networks:
       - smart_scheduler_net
 
@@ -171,7 +171,7 @@ services:
     container_name: discovery
     ports:
       - "8761:8761"
-    profiles: ["local"]
+    profiles: ["local", "prod"]
     healthcheck:
       test: ["CMD-SHELL", "curl -sf --max-time 5 http://localhost:8761/actuator/health | grep '\"UP\"' > /dev/null || exit 1"]
       interval: 15s
@@ -191,7 +191,7 @@ services:
     depends_on:
       discovery:
         condition: service_healthy
-    profiles: ["local"]
+    profiles: ["local", "prod"]
     healthcheck:
       test: ["CMD-SHELL", "curl -sf --max-time 5 http://localhost:8888/actuator/health | grep '\"UP\"' > /dev/null || exit 1"]
       interval: 15s
@@ -211,7 +211,7 @@ services:
     depends_on:
       discovery:
         condition: service_healthy
-    profiles: ["local"]
+    profiles: ["local", "prod"]
     healthcheck:
       test: ["CMD-SHELL", "curl -sf --max-time 5 http://localhost:8080/actuator/health | grep '\"UP\"' > /dev/null || exit 1"]
       interval: 15s
@@ -243,7 +243,7 @@ services:
         condition: service_healthy
       gateway:
         condition: service_healthy
-    profiles: ["local"]
+    profiles: ["local", "prod"]
     healthcheck:
       test: ["CMD-SHELL", "curl -sf --max-time 5 http://localhost:8082/actuator/health | grep '\"UP\"' > /dev/null || exit 1"]
       interval: 15s
@@ -279,7 +279,7 @@ services:
         condition: service_healthy
       appointment:
         condition: service_healthy
-    profiles: ["local"]
+    profiles: ["local", "prod"]
     healthcheck:
       test: ["CMD-SHELL", "curl -sf --max-time 5 http://localhost:8083/actuator/health | grep '\"UP\"' > /dev/null || exit 1"]
       interval: 15s
@@ -301,7 +301,7 @@ services:
         condition: service_healthy
       notification:
         condition: service_healthy
-    profiles: [ "local" ]
+    profiles: [ "local", "prod"]
     healthcheck:
       test: [ "CMD-SHELL", "curl -sf --max-time 5 http://localhost:9999/actuator/health | grep '\"UP\"' > /dev/null || exit 1" ]
       interval: 15s
