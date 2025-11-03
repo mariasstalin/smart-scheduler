@@ -134,7 +134,7 @@ That’s it — SmartScheduler will start receiving live webhook events from Zoh
 ---
 
 ## ✅ Step 8: Verify the Flow
-1. Book / cancel / reschedule an appointment in Zoho.
+1. Book, cancel, or reschedule an appointment on the Zoho Patient Portal: https://smartscheduler.zohobookings.in/
 2. Check logs in:
    ```bash
    docker compose logs -f notification
