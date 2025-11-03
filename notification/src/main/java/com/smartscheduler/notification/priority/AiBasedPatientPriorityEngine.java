@@ -65,13 +65,15 @@ public class AiBasedPatientPriorityEngine implements PatientPriorityEngine {
                 double score = ((Number) r.get("score")).doubleValue();
 
                 patients.stream()
-                        .filter(p -> p.getId().equals(id))
+                        .filter(p -> p.getId().equals(Long.valueOf(id)))
                         .findFirst()
                         .ifPresent(p -> {
                             p.setScore(score);
                             sortedPatients.add(p);
                         });
             }
+
+            System.out.println(sortedPatients);
 
             return sortedPatients;
 
