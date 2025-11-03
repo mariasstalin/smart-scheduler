@@ -30,7 +30,7 @@ message:
 ai:
   priority:
     engine:
-      url: http://127.0.0.1:5000
+      url: http://light-gbm:5000
 
 rasa:
   url: http://rasa:5005
