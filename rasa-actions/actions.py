@@ -240,7 +240,7 @@ class ValidateRescheduleForm(FormValidationAction):
 
         return {
             "appointment_selection": str(selection),
-            "appointment_id": selected_appt.get("appointment_id"),
+            "appointment_id": selected_appt.get("appointmentId"),
             "service": selected_appt.get("service"),
             "requested_slot": "datetime",
         }
@@ -274,13 +274,7 @@ class ValidateRescheduleForm(FormValidationAction):
             dispatcher.utter_message(text="📅 <b>INVALID FORMAT:</b> The date/time format is invalid. Please try again, e.g., 'next Tuesday at 3 PM'.")
             return {"datetime": None}
 
-        if not is_valid_time(dt):
-            slots = next_available_slots()
-            list_msg = "<br>".join([f"<b>({idx})</b> {s}" for idx, s in enumerate(slots, start=1)])
-            msg = f"⚠️ <b>SLOT UNAVAILABLE:</b> Sorry, that time is unavailable or in the past.<br><br>Here are the <b>next available slots</b>:<br>{list_msg}<br><br>Please reply with the <b>number</b> of a suggested time or try a new time."
-            dispatcher.utter_message(text=msg)
-
-            return {"datetime": None, "suggested_slots": slots}
+        print(f"[DEBUG] Parsed datetime value: {dt}")
 
         return {"datetime": dt.strftime("%Y-%m-%d %H:%M"), "suggested_slots": None}
 
@@ -314,13 +308,15 @@ class ActionSubmitRescheduleForm(Action):
 
         # Clear all slots related to the flow
         events.extend([
-            SlotSet("appointments_list", None),
-            SlotSet("appointment_selection", None),
-            SlotSet("appointment_id", None),
-            SlotSet("service", None),
-            SlotSet("datetime", None),
-            SlotSet("suggested_slots", None),
+            # Keep important context
+            SlotSet("appointment_id", tracker.get_slot("appointment_id")),
+            SlotSet("service", tracker.get_slot("service")),
+            SlotSet("datetime", tracker.get_slot("datetime")),
+
+            # Optionally clear temporary form-related fields
             SlotSet("requested_slot", None),
+            SlotSet("appointment_selection", None),
+            SlotSet("suggested_slots", None),
             SlotSet("appointment_action_type", None),
         ])
         return events
@@ -515,8 +511,14 @@ class ActionCancelAppointment(Action):
 
         # Clear all related slots
         return [
-            SlotSet("appointments_list", None), SlotSet("appointment_selection", None),
-            SlotSet("appointment_id", None), SlotSet("service", None),
-            SlotSet("requested_slot", None), SlotSet("appointment_action_type", None),
-            FollowupAction("utter_goodbye")
+            # Keep important context
+            SlotSet("appointment_id", tracker.get_slot("appointment_id")),
+            SlotSet("service", tracker.get_slot("service")),
+            SlotSet("datetime", tracker.get_slot("datetime")),
+
+            # Optionally clear temporary form-related fields
+            SlotSet("requested_slot", None),
+            SlotSet("appointment_selection", None),
+            SlotSet("suggested_slots", None),
+            SlotSet("appointment_action_type", None),
         ]

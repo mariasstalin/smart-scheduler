@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/external")
@@ -64,7 +65,7 @@ public class ExternalActionController {
         try {
             logger.info("External request to reschedule oldId={} to newTime={}", id, request.getNewDatetime());
 
-            externalActionService.reschedule(Long.valueOf(request.getSlotOfferId()), Long.valueOf(id), request.getNewDatetime());
+            externalActionService.reschedule(Objects.isNull(request.getSlotOfferId()) ? null : Long.valueOf(request.getSlotOfferId()), Long.valueOf(id), request.getNewDatetime());
 
             return new ResponseEntity<>(new RescheduleResponseDto("SUCCESS"), HttpStatus.OK);
         } catch (SlotUnavailableException e) {

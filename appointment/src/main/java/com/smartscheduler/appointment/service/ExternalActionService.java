@@ -12,6 +12,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -46,7 +47,9 @@ public class ExternalActionService {
             try {
                 zohoApiService.rescheduleAppointmentInZoho(oldAppointment.getZohoId(), newDatetimeString, oldAppointment.getDoctor().getZohoId());
 
-                rabbitTemplate.convertAndSend("appointments.exchange", "appointments.slots.reallocated", new SlotReallocatedEvent(notificationId));
+                if(Objects.nonNull(notificationId)) {
+                    rabbitTemplate.convertAndSend("appointments.exchange", "appointments.slots.reallocated", new SlotReallocatedEvent(notificationId));
+                }
 
                 log.info("Appointment saved and SlotBookedEvent published: {}", oldAppointment.getId());
             } catch (Exception e) {
