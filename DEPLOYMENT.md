@@ -51,10 +51,9 @@ Run the following command to bring up all SmartScheduler components in productio
 docker compose --profile prod up -d --build
 ```
 Note:
+If any of the SmartScheduler services fail to start after executing "docker compose --profile prod up -d --build". Please run the below command a few more times until all services are up and healthy.
 ```
-If any of the SmartScheduler services fail to start after executing
-docker compose --profile prod up -d,
-please re-run the same command a few more times until all services are up and healthy.
+docker compose --profile prod up -d
 ```
 This will start:
 - `discovery service` (Eureka)
