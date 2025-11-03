@@ -74,7 +74,7 @@ CREATE TABLE waitlist (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   doctor_id BIGINT NOT NULL,
   patient_id BIGINT NOT NULL,
-  created_at timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   notified BOOLEAN DEFAULT FALSE,
   appointment_id BIGINT DEFAULT NULL,
   FOREIGN KEY (doctor_id) REFERENCES doctors(id),
@@ -85,7 +85,7 @@ CREATE TABLE waitlist (
 CREATE TABLE waitlist_preferred_dates (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     waitlist_id BIGINT NOT NULL,
-    preferred_date DATE NOT NULL,
+    preferred_date TIMESTAMP NOT NULL,
     -- NOTE: ON DELETE CASCADE is a good practice here.
     FOREIGN KEY (waitlist_id) REFERENCES waitlist(id) ON DELETE CASCADE
 );
