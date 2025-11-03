@@ -48,7 +48,7 @@ APPLICATION_BASE_URL=http://gateway:8080
 
 Run the following command to bring up all SmartScheduler components in production mode:
 ```bash
-docker compose --profile prod up -d
+docker compose --profile prod up -d --build
 ```
 Note:
 ```
