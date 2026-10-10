@@ -39,88 +39,68 @@ An AI-powered system that automatically fills cancelled appointment slots by:
 ```mermaid
 graph TB
     subgraph External["🌐 External Layer"]
-        Patient["👤 Patient<br/>WhatsApp/SMS"]
-        Zoho["📅 Zoho Booking<br/>Portal"]
-        Twilio["💬 Twilio<br/>Messaging API"]
+        Patient["👤 Patient - WhatsApp/SMS"]
+        Zoho["📅 Zoho Booking Portal"]
+        Twilio["💬 Twilio Messaging API"]
     end
 
     subgraph Gateway["🚪 Gateway Layer"]
-        Ngrok["🔗 Ngrok Tunnel<br/>:4040"]
-        APIGateway["🌉 API Gateway<br/>:8080"]
+        Ngrok["🔗 Ngrok Tunnel :4040"]
+        APIGateway["🌉 API Gateway :8080"]
     end
 
     subgraph Services["⚙️ Microservices"]
-        Discovery["📡 Discovery<br/>Eureka :8761"]
-        Config["⚙️ Config Server<br/>:8888"]
-        Appointment["📋 Appointment<br/>Service :8082"]
-        Notification["🔔 Notification<br/>Service :8083"]
-        Demo["🖥️ Demo UI<br/>:9999"]
+        Discovery["📡 Discovery Eureka :8761"]
+        Config["⚙️ Config Server :8888"]
+        Appointment["📋 Appointment Service :8082"]
+        Notification["🔔 Notification Service :8083"]
+        Demo["🖥️ Demo UI :9999"]
     end
 
     subgraph AI["🤖 AI & ML Layer"]
-        Rasa["💭 Rasa Bot<br/>:5005"]
-        RasaActions["⚡ Rasa Actions<br/>:5055"]
-        LightGBM["🧠 LightGBM<br/>ML Model :5000"]
-        Duckling["📆 Duckling<br/>NLP :8000"]
+        Rasa["💭 Rasa Bot :5005"]
+        RasaActions["⚡ Rasa Actions :5055"]
+        LightGBM["🧠 LightGBM ML Model :5000"]
+        Duckling["📆 Duckling NLP :8000"]
     end
 
     subgraph Infra["🗄️ Infrastructure"]
-        MySQL["🗄️ MySQL<br/>:3306"]
-        Redis["🗄️ Redis<br/>:6379"]
-        RabbitMQ["📮 RabbitMQ<br/>:5672"]
+        MySQL["🗄️ MySQL :3306"]
+        Redis["🗄️ Redis :6379"]
+        RabbitMQ["📮 RabbitMQ :5672"]
     end
 
-    %% External connections
-    Patient <-->|"WhatsApp"| Twilio
-    Twilio <-->|"Webhook"| Ngrok
-    Zoho -->|"Webhook"| Ngrok
+    Patient <--> Twilio
+    Twilio <--> Ngrok
+    Zoho --> Ngrok
     Ngrok --> APIGateway
 
-    %% Gateway to services
     APIGateway --> Appointment
     APIGateway --> Notification
     APIGateway --> Demo
 
-    %% Service discovery
-    Appointment -.->|"Register"| Discovery
-    Notification -.->|"Register"| Discovery
-    Demo -.->|"Register"| Discovery
+    Appointment -.-> Discovery
+    Notification -.-> Discovery
+    Demo -.-> Discovery
 
-    %% Config
-    Appointment -.->|"Config"| Config
-    Notification -.->|"Config"| Config
+    Appointment -.-> Config
+    Notification -.-> Config
 
-    %% Appointment service
     Appointment --> MySQL
     Appointment --> Redis
-    Appointment -->|"Events"| RabbitMQ
-    Appointment <-->|"Sync"| Zoho
+    Appointment --> RabbitMQ
+    Appointment <--> Zoho
 
-    %% Notification service
     Notification --> MySQL
-    Notification <-->|"Events"| RabbitMQ
+    Notification <--> RabbitMQ
     Notification --> LightGBM
     Notification --> Rasa
 
-    %% Rasa
     Rasa --> RasaActions
     Rasa --> Duckling
     RasaActions --> APIGateway
 
-    %% Demo
-    Demo -->|"WebSocket"| Patient
-
-    classDef external fill:#e1f5ff,stroke:#01579b,stroke-width:2px
-    classDef gateway fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    classDef service fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    classDef ai fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px
-    classDef infra fill:#ffebee,stroke:#c62828,stroke-width:2px
-
-    class Patient,Zoho,Twilio external
-    class Ngrok,APIGateway gateway
-    class Discovery,Config,Appointment,Notification,Demo service
-    class Rasa,RasaActions,LightGBM,Duckling ai
-    class MySQL,Redis,RabbitMQ infra
+    Demo --> Patient
 ```
 
 ### Key Flow: Cancelled Slot → Patient Notification
