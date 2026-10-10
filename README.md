@@ -65,8 +65,8 @@ graph TB
     end
 
     subgraph Infra["🗄️ Infrastructure"]
-        MySQL[("MySQL<br/>:3306")]
-        Redis[("Redis<br/>:6379")]
+        MySQL["🗄️ MySQL<br/>:3306"]
+        Redis["🗄️ Redis<br/>:6379"]
         RabbitMQ["📮 RabbitMQ<br/>:5672"]
     end
 
